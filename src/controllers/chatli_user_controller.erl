@@ -1,20 +1,61 @@
 -module(chatli_user_controller).
 -export([
          user/1,
+         login/1,
          manage_user/1,
          device/1,
          manage_device/1
         ]).
 
+-include("chatli.hrl").
+
 user(#{req := #{ method := <<"GET">>}}) ->
-    {json, 200, #{}, []};
+    Users = chatli_db:get_all_users(),
+    {json, 200, #{}, Users};
 user(#{req := #{ method := <<"POST">>},
        json := JSON}) ->
     Id = uuid:uuid_to_string(uuid:get_v4()),
     logger:debug("json: ~p", [JSON]),
-    Object = maps:merge(#{<<"id">> => Id}, JSON),
-    chatli_db:create_user(Object),
-    {json, 201, #{}, Object}.
+    Phonenumber = maps:get(<<"phoneNumber">>, JSON, undefined),
+    Email = maps:get(<<"email">>, JSON, undefined),
+    Password = maps:get(<<"password">>, JSON, undefined),
+    Username = maps:get(<<"username">>, JSON),
+    Object = #{id => Id,
+               username => Username,
+               phone_number => Phonenumber,
+               email => Email,
+               password => Password},
+    case {Phonenumber, Email, Password} of
+        {undefined, undefined, undefined} ->
+            {status, 400};
+        {_, _, undefined} ->
+            {status, 400};
+        _ ->
+            chatli_db:create_user(Object),
+            {status, 201}
+    end.
+
+login(#{req := #{method := <<"POST">>},
+        json := JSON}) ->
+    Username = maps:get(<<"username">>, JSON, undefined),
+    Password = maps:get(<<"password">>, JSON, undefined),
+    case {Username, Password} of
+        {undefined, undefined} ->
+            {status, 400};
+        {_, undefined} ->
+            {status, 400};
+        {undefined, _} ->
+            {status, 400};
+        {Username, Password} ->
+            #{id := Id,
+              username := Username,
+              password := Password,
+              avatar := Avatar} = chatli_db:get_login(Username, Password),
+              AuthObj = #{access_token => jwerl:sign(#{id => Id,
+                                                      username => Username,
+                                                      avatar => Avatar}, hs512, ?SECRET)},
+            {json, 200, #{}, AuthObj}
+    end.
 
 manage_user(#{req := #{method := <<"GET">>,
                        bindings := #{userid := UserId}}}) ->

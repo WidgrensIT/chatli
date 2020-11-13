@@ -2,6 +2,7 @@
 
 -export([create_user/1,
          get_user/1,
+         get_login/2,
          find_user/1,
          delete_user/1,
          get_all_users/0,
@@ -17,13 +18,19 @@
 
 create_user(#{id := Id,
               username := Username,
-              phone_number := PhoneNumber}) ->
-    SQL = <<"INSERT INTO chatli_user (id, username, phone_number) VALUES ($1, $2, $3)">>,
-    query1(SQL, [Id, Username, PhoneNumber]).
+              phone_number := PhoneNumber,
+              email := Email,
+              password := Password}) ->
+    SQL = <<"INSERT INTO chatli_user (id, username, phone_number, email, password) VALUES ($1, $2, $3, $4, $5)">>,
+    query1(SQL, [Id, Username, PhoneNumber, Email, Password]).
 
 get_user(UserId) ->
     SQL = <<"SELECT * FROM chatli_user WHERE id = $1">>,
     query1(SQL, [UserId]).
+
+get_login(Username, Password) ->
+    SQL = <<"SELECT * FROM chatli_user WHERE username = $1 AND password = $2">>,
+    query1(SQL, [Username, Password]).
 
 find_user(PhoneNumber) ->
     SQL = <<"SELECT * FROM chatli_user WHERE phone_number = $1">>,

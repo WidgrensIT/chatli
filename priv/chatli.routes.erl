@@ -1,7 +1,8 @@
 #{prefix => "/v1",
   security => false,
   routes => [
-            {"/signup", { chatli_user_controller, user}, #{methods => [post]}}
+            {"/signup", { chatli_user_controller, user}, #{methods => [post]}},
+            {"/login", { chatli_user_controller, login}, #{methods => [post]}}
            ],
  statics => [
              {"/assets/[...]", "assets"}
@@ -20,4 +21,4 @@
             {"/chat/:chatid/participant/:participantid", {chatli_chat_controller, manage_participants}, #{methods => [get, put, delete]}},
             {"/device", {chatli_user_controller, device}, #{methods => [get]}},
             {"/device/:deviceid", {chatli_user_controller, manage_device}, #{methods => [get, put]}}
-]}
+]}.

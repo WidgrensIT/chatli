@@ -2,7 +2,9 @@ CREATE TABLE chatli_user
 (
     id uuid PRIMARY KEY,
     username varchar NOT NULL,
-    phone_number varchar NOT NULL
+    phone_number varchar,
+    email varchar,
+    avatar varchar
 );
 
 CREATE TABLE message
