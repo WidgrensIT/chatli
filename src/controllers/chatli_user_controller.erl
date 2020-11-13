@@ -2,6 +2,7 @@
 -export([
          user/1,
          login/1,
+         signup/1,
          manage_user/1,
          device/1,
          manage_device/1
@@ -11,8 +12,9 @@
 
 user(#{req := #{ method := <<"GET">>}}) ->
     Users = chatli_db:get_all_users(),
-    {json, 200, #{}, Users};
-user(#{req := #{ method := <<"POST">>},
+    {json, 200, #{}, Users}.
+
+signup(#{req := #{ method := <<"POST">>},
        json := JSON}) ->
     Id = uuid:uuid_to_string(uuid:get_v4()),
     logger:debug("json: ~p", [JSON]),
