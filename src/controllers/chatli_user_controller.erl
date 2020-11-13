@@ -1,14 +1,21 @@
 -module(chatli_user_controller).
 -export([
-         user/1,
+         login/1,
+         signup/1,
          manage_user/1,
          device/1,
          manage_device/1
         ]).
 
-user(#{req := #{ method := <<"GET">>}}) ->
+login(#{req := #{method := <<"POST">>},
+        json := #{<<"username">> := _Username,
+                  <<"password">> := _Password}}) ->
+    {json, #{<<"token">> => <<"123">>}}.
+
+
+signup(#{req := #{ method := <<"GET">>}}) ->
     {json, 200, #{}, []};
-user(#{req := #{ method := <<"POST">>},
+signup(#{req := #{ method := <<"POST">>},
        json := JSON}) ->
     Id = uuid:uuid_to_string(uuid:get_v4()),
     logger:debug("json: ~p", [JSON]),

@@ -1,7 +1,8 @@
 #{prefix => "/v1",
   security => false,
   routes => [
-            {"/signup", { chatli_user_controller, user}, #{methods => [post]}}
+             {"/signup", { chatli_user_controller, signup}, #{methods => [post]}},
+             {"/login", { chatli_user_controller, login}, #{methods => [post, get]}}
            ],
  statics => [
              {"/assets/[...]", "assets"}
