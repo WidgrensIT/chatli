@@ -5,7 +5,8 @@
          signup/1,
          manage_user/1,
          device/1,
-         manage_device/1
+         manage_device/1,
+         delete_user/1
         ]).
 
 -include("chatli.hrl").
@@ -85,3 +86,8 @@ manage_device(#{req := #{method := <<"GET">>,
                          bindings := #{devicdeid := DeviceId}}}) ->
     %% Get device
     {json ,200, #{}, #{id => DeviceId}}.
+
+delete_user(#{req := #{method := <<"DELETE">>,
+                       bindings := #{userid := UserId}}}) ->
+    chatli_db:delete_user(UserId),
+    {status, 200}.
