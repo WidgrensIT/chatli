@@ -41,7 +41,7 @@ delete_user(UserId) ->
     query1(SQL, [UserId]).
 
 get_all_users() ->
-    SQL = <<"SELECT * FROM chatli_user">>,
+    SQL = <<"SELECT id, avatar, email, phone_number, username FROM chatli_user">>,
     query(SQL, []).
 
 create_message(#{<<"id">> := Id,

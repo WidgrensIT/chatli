@@ -4,7 +4,8 @@ CREATE TABLE chatli_user
     username varchar NOT NULL,
     phone_number varchar,
     email varchar,
-    avatar varchar
+    avatar varchar,
+    password varchar NOT NULL
 );
 
 CREATE TABLE message

@@ -28,13 +28,15 @@ init_per_suite(_Config) ->
               <<"username">> => Username,
               <<"password">> => Password},
     Path = [?BASEPATH, <<"/v1/signup">>],
-    #{status := {201, _}, body := RespBody} = shttpc:post(Path, encode(User1), opts()),
-    User1resp = decode(RespBody),
+    #{status := {201, _}} = shttpc:post(Path, encode(User1), opts()),
     LoginPath = [?BASEPATH, <<"/v1/login">>],
     #{status := {200, _}, body := LoginRespBody} = shttpc:post(LoginPath, encode(#{username => Username,
                                                                                    password => Password}), opts()),
     #{access_token := Token} = decode(LoginRespBody),
-    [{user, User1resp},
+    [_ , Payload, _] = bstring:tokens(Token, <<".">>),
+    User = decode(base64:decode(Payload)),
+    logger:info("token:  ~p", [Token]),
+    [{user, User},
      {token, Token}].
 
 %%--------------------------------------------------------------------
