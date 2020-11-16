@@ -77,9 +77,8 @@ participants(#{ req := #{method := <<"POST">>,
             {status, 500}
     end.
 
-manage_participants(#{req := #{ method := <<"DELETE">>},
-                                bindigns := #{chatid := ChatId,
-                                              participantid := ParticipantId}}) ->
-    logger:debug("chatid: ~p participantid: ~p", [ChatId, ParticipantId]),
+manage_participants(#{req := #{ method := <<"DELETE">>,
+                                bindings := #{chatid := ChatId,
+                                              participantid := ParticipantId}}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {status, 200}.

@@ -138,7 +138,8 @@ end_per_testcase(_TestCase, _Config) ->
 %%--------------------------------------------------------------------
 groups() ->
     [{chat, [sequence], [add_participant,
-                         list_participant]}].
+                         list_participant,
+                         remove_participant]}].
 
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -181,6 +182,17 @@ list_participant(Config) ->
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
     #{participants := Participants} = decode(RespBody), 
     2 = length(Participants).
+
+remove_participant(Config) ->
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{object := #{id := UserId2}} = proplists:get_value(user2, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant/">>, UserId2],
+    #{status := {200, _}} = shttpc:delete(Path, opts(Token)),
+    ListPath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
+    #{status := {200, _}, body := RespBody} = shttpc:get(ListPath, opts(Token)),
+    #{participants := Participants} = decode(RespBody), 
+    1 = length(Participants).
 
 opts() ->
     opts(undefined).
