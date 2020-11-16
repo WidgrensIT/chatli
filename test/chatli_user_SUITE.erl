@@ -24,20 +24,33 @@ suite() ->
 init_per_suite(_Config) ->
     Username = <<"username1">>,
     Password = <<"1234">>,
+    Username2 = <<"username2">>,
+    Password2 = <<"12345">>,
     User1 = #{<<"email">> => <<"my@email.com">>,
               <<"username">> => Username,
               <<"password">> => Password},
+    User2 = #{<<"phoneNumber">> => <<"123456">>,
+              <<"username">> => Username2,
+              <<"password">> => Password2},
     Path = [?BASEPATH, <<"/v1/signup">>],
     #{status := {201, _}} = shttpc:post(Path, encode(User1), opts()),
+    Path = [?BASEPATH, <<"/v1/signup">>],
+    #{status := {201, _}} = shttpc:post(Path, encode(User2), opts()),
     LoginPath = [?BASEPATH, <<"/v1/login">>],
     #{status := {200, _}, body := LoginRespBody} = shttpc:post(LoginPath, encode(#{username => Username,
                                                                                    password => Password}), opts()),
     #{access_token := Token} = decode(LoginRespBody),
     [_ , Payload, _] = bstring:tokens(Token, <<".">>),
-    User = decode(base64:decode(Payload)),
-    logger:info("token:  ~p", [Token]),
-    [{user, User},
-     {token, Token}].
+    UserObj1 = decode(base64:decode(Payload)),
+    #{status := {200, _}, body := LoginRespBody2} = shttpc:post(LoginPath, encode(#{username => Username2,
+                                                                                    password => Password2}), opts()),
+    #{access_token := Token2} = decode(LoginRespBody2),
+    [_ , Payload2, _] = bstring:tokens(Token2, <<".">>),
+    UserObj2 = decode(base64:decode(Payload2)),
+    [{user1, #{object => UserObj1,
+               token => Token}},
+     {user2, #{object => UserObj2,
+               token => Token2}}].
 
 %%--------------------------------------------------------------------
 %% @spec end_per_suite(Config0) -> term() | {save_config,Config1}
@@ -45,9 +58,12 @@ init_per_suite(_Config) ->
 %% @end
 %%--------------------------------------------------------------------
 end_per_suite(Config) ->
-    #{id := Id} = proplists:get_value(user, Config),
-    Path = [?BASEPATH, <<"/client/">>, Id, <<"/user/">>, Id],
+    #{object := #{id := Id}} = proplists:get_value(user1, Config),
+    #{object := #{id := Id2}} = proplists:get_value(user2, Config),
+    Path = [?BASEPATH, <<"/client/user/">>, Id],
     shttpc:delete(Path, opts()),
+    Path2 = [?BASEPATH, <<"/client/user/">>, Id2],
+    shttpc:delete(Path2, opts()),
     ok.
 
 %%--------------------------------------------------------------------
@@ -138,10 +154,10 @@ my_test_case() ->
 %% @end
 %%--------------------------------------------------------------------
 get_all_users(Config) ->
-    #{id := Id} = User =  proplists:get_value(user, Config),
-    Path = [?BASEPATH, <<"/client/">>, Id, <<"/user">>],
-    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts()),
-    [User] = decode(RespBody).
+    #{token := Token} =  proplists:get_value(user1, Config),
+    Path = [?BASEPATH, <<"/client/user">>],
+    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    2 = length(decode(RespBody)).
 
 opts() ->
     opts(undefined).
