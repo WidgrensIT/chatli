@@ -5,21 +5,22 @@
          signup/1,
          manage_user/1,
          device/1,
-         manage_device/1
+         manage_device/1,
+         delete_user/1
         ]).
 
 -include("chatli.hrl").
 
 user(#{req := #{ method := <<"GET">>}}) ->
-    Users = chatli_db:get_all_users(),
+    {ok, Users} = chatli_db:get_all_users(),
     {json, 200, #{}, Users}.
 
 signup(#{req := #{ method := <<"POST">>},
        json := JSON}) ->
-    Id = uuid:uuid_to_string(uuid:get_v4()),
+    Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     logger:debug("json: ~p", [JSON]),
-    Phonenumber = maps:get(<<"phoneNumber">>, JSON, undefined),
-    Email = maps:get(<<"email">>, JSON, undefined),
+    Phonenumber = maps:get(<<"phoneNumber">>, JSON, <<>>),
+    Email = maps:get(<<"email">>, JSON, <<>>),
     Password = maps:get(<<"password">>, JSON, undefined),
     Username = maps:get(<<"username">>, JSON),
     Object = #{id => Id,
@@ -49,13 +50,8 @@ login(#{req := #{method := <<"POST">>},
         {undefined, _} ->
             {status, 400};
         {Username, Password} ->
-            #{id := Id,
-              username := Username,
-              password := Password,
-              avatar := Avatar} = chatli_db:get_login(Username, Password),
-              AuthObj = #{access_token => jwerl:sign(#{id => Id,
-                                                      username => Username,
-                                                      avatar => Avatar}, hs512, ?SECRET)},
+            {ok, User} = chatli_db:get_login(Username, Password),
+            AuthObj = #{access_token => jwerl:sign(maps:remove(password, User), hs512, ?SECRET)},
             {json, 200, #{}, AuthObj}
     end.
 
@@ -85,3 +81,8 @@ manage_device(#{req := #{method := <<"GET">>,
                          bindings := #{devicdeid := DeviceId}}}) ->
     %% Get device
     {json ,200, #{}, #{id => DeviceId}}.
+
+delete_user(#{req := #{method := <<"DELETE">>,
+                       bindings := #{userid := UserId}}}) ->
+    chatli_db:delete_user(UserId),
+    {status, 200}.

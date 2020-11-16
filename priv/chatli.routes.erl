@@ -9,11 +9,12 @@
             ]
 }.
 
-#{prefix => "/client/:userid",
-  security => false,
+#{prefix => "/client/",
+  security => {chatli_auth, auth_jwt},
   routes => [
             {"/", { chatli_user_controller, manage_user}, #{methods => [get, put, delete]}},
-            {"/user", {chatlis_user_controller, user}, {methods => [get]}},
+            {"/user", {chatli_user_controller, user}, #{methods => [get]}},
+            {"/user/:userid", {chatli_user_controller, delete_user}, #{methods => [delete]}},
             {"/message", {chatli_chat_controller, message}, #{methods => [post]}},
             {"/chat", {chatli_chat_controller, chat}, #{methods => [get, post]}},
             {"/chat/:chatid", {chatli_chat_controller, manage_chat}, #{methods => [get, delete]}},
