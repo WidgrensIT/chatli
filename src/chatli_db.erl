@@ -12,6 +12,7 @@
          create_chat/1,
          get_chat/1,
          get_all_chats/1,
+         delete_chat/1,
          add_participant/2,
          remove_participant/2,
          get_participants/1]).
@@ -78,6 +79,10 @@ get_all_chats(UserId) ->
              WHERE participant.chat_id = chat.id">>,
     query(SQL, [UserId]).
 
+delete_chat(ChatId) ->
+  SQL = <<"DELETE FROM chat WHERE id = $1">>,
+  query1(SQL, [ChatId]).
+
 add_participant(ChatId, UserId) ->
     SQL = <<"INSERT INTO participant (chat_id, user_id) VALUES ($1, $2)">>,
     query1(SQL, [ChatId, UserId]).
@@ -87,7 +92,7 @@ remove_participant(ChatId, UserId) ->
     query1(SQL, [ChatId, UserId]).
 
 get_participants(ChatId) ->
-    SQL = <<"SELECT * FROM participant WHERE chat_id = $1">>,
+    SQL = <<"SELECT user_id FROM participant WHERE chat_id = $1">>,
     query(SQL, [ChatId]).
 
 % Expect 1 result
