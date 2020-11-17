@@ -7,7 +7,7 @@
          delete_user/1,
          get_all_users/0,
          create_message/1,
-         get_message/1,
+         get_message/2,
          get_chat_messages/1,
          create_chat/1,
          get_chat/1,
@@ -26,7 +26,7 @@ create_user(#{id := Id,
     query1(SQL, [Id, Username, PhoneNumber, Email, Password]).
 
 get_user(UserId) ->
-    SQL = <<"SELECT * FROM chatli_user WHERE id = $1">>,
+    SQL = <<"SELECT id, username, phone_number, email FROM chatli_user WHERE id = $1">>,
     query1(SQL, [UserId]).
 
 get_login(Username, Password) ->
@@ -46,19 +46,18 @@ get_all_users() ->
     query(SQL, []).
 
 create_message(#{<<"id">> := Id,
-                 <<"chat_id">> := ChatId,
+                 <<"chatId">> := ChatId,
                  <<"payload">> := Payload,
-                 <<"sender">> := UserId,
-                 <<"timestamp">> := Timestamp}) ->
-    SQL = <<"INSERT INTO message (id, chat_id, payload, sender, timestamp) VALUES ($1, $2, $3, $4, $5)">>,
-    query1(SQL, [Id, ChatId, Payload, UserId, Timestamp]).
+                 <<"sender">> := UserId}) ->
+    SQL = <<"INSERT INTO message (id, chat_id, payload, sender) VALUES ($1, $2, $3, $4)">>,
+    query1(SQL, [Id, ChatId, Payload, UserId]).
 
-get_message(MessageId) ->
-    SQL = <<"SELECT * FROM message WHERE id = $1">>,
-    query1(SQL, [MessageId]).
+get_message(ChatId, MessageId) ->
+    SQL = <<"SELECT id, chat_id, payload, sender, DATE_PART('epoch', timestamp) FROM message WHERE chat_id = $1 AND id = $2">>,
+    query1(SQL, [ChatId, MessageId]).
 
 get_chat_messages(ChatId) ->
-    SQL = <<"SELECT * FROM message where chat_id = $1">>,
+    SQL = <<"SELECT id, chat_id, payload, sender, DATE_PART('epoch', timestamp) FROM message where chat_id = $1">>,
     query(SQL, [ChatId]).
 
 create_chat(#{<<"id">> := Id,

@@ -139,7 +139,9 @@ end_per_testcase(_TestCase, _Config) ->
 groups() ->
     [{chat, [sequence], [add_participant,
                          list_participant,
-                         remove_participant]}].
+                         remove_participant,
+                         send_message,
+                         get_all_message]}].
 
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -193,6 +195,25 @@ remove_participant(Config) ->
     #{status := {200, _}, body := RespBody} = shttpc:get(ListPath, opts(Token)),
     #{participants := Participants} = decode(RespBody), 
     1 = length(Participants).
+
+send_message(Config) ->
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    Path = [?BASEPATH, <<"/client/message">>],
+    #{status := {201, _}} = shttpc:post(Path, encode(#{chatId => ChatId,
+                                                       payload => <<"hi hi">>}), opts(Token)).
+get_all_message(Config) ->
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message">>],
+    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    [#{id := MessageId}] = [MessageObj] = decode(RespBody),
+    MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
+    #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
+    #{id := MessageId} = MessageObj = decode(MessageRespBody).
+    
+    
+
 
 opts() ->
     opts(undefined).

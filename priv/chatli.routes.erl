@@ -18,6 +18,8 @@
             {"/message", {chatli_chat_controller, message}, #{methods => [post]}},
             {"/chat", {chatli_chat_controller, chat}, #{methods => [get, post]}},
             {"/chat/:chatid", {chatli_chat_controller, manage_chat}, #{methods => [get, delete]}},
+            {"/chat/:chatid/message", {chatli_chat_controller, get_archive}, #{methods => [get]}},
+            {"/chat/:chatid/message/:messageid", {chatli_chat_controller, manage_message}, #{methods => [get, delete]}},
             {"/chat/:chatid/participant", {chatli_chat_controller, participants}, #{methods => [get, post]}},
             {"/chat/:chatid/participant/:participantid", {chatli_chat_controller, manage_participants}, #{methods => [get, put, delete]}},
             {"/device", {chatli_user_controller, device}, #{methods => [get]}},

@@ -1,6 +1,8 @@
 -module(chatli_chat_controller).
 -export([
          message/1,
+         get_archive/1,
+         manage_message/1,
          chat/1,
          manage_chat/1,
          participants/1,
@@ -8,10 +10,24 @@
         ]).
 
 message(#{req := #{method := <<"POST">>},
+          auth_data := #{id := UserId},
           json := Json}) ->
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
-    logger:debug("json ~p", [Json]),
+    Object = maps:merge(#{<<"id">> => Id,
+                          <<"sender">> => UserId}, Json),
+    ok = chatli_db:create_message(Object),
     {json, 201, #{}, #{id => Id}}.
+
+get_archive(#{req := #{method := <<"GET">>,
+                       bindings := #{chatid := ChatId}}}) ->
+    {ok, Result} = chatli_db:get_chat_messages(ChatId),
+    {json, 200, #{}, Result}.
+
+manage_message(#{req := #{method := <<"GET">>,
+                          bindings := #{chatid := ChatId,
+                                        messageid := MessageId}}}) ->
+    {ok, Message} = chatli_db:get_message(ChatId, MessageId),
+    {json, 200, #{}, Message}.
 
 chat(#{req := #{method := <<"GET">>},
        auth_data := #{id := UserId}}) ->

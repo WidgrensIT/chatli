@@ -14,9 +14,8 @@ CREATE TABLE message
     chat_id uuid NOT NULL,
     payload varchar,
     sender uuid NOT NULL,
-    timestamp TIMESTAMP
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE TABLE chat
 (
     id uuid PRIMARY KEY,
