@@ -54,21 +54,21 @@ create_message(#{<<"id">> := Id,
 
 get_message(ChatId, MessageId) ->
     SQL = <<"SELECT id,
-                    chat_id, 
-                    payload, 
-                    sender, 
-                    DATE_PART('epoch', timestamp) 
-            FROM message 
+                    chat_id,
+                    payload,
+                    sender,
+                    DATE_PART('epoch', timestamp)
+            FROM message
             WHERE chat_id = $1 AND id = $2">>,
     query1(SQL, [ChatId, MessageId]).
 
 get_chat_messages(ChatId) ->
-    SQL = <<"SELECT id, 
-                    chat_id, 
-                    payload, 
-                    sender, 
-                    DATE_PART('epoch', timestamp) 
-            FROM message 
+    SQL = <<"SELECT id,
+                    chat_id,
+                    payload,
+                    sender,
+                    DATE_PART('epoch', timestamp)
+            FROM message
             WHERE chat_id = $1">>,
     query(SQL, [ChatId]).
 
