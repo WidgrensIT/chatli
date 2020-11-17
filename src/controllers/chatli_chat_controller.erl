@@ -9,12 +9,12 @@
 
 message(#{req := #{method := <<"POST">>},
           json := Json}) ->
-    Id = uuid:uuid_to_string(uuid:get_v4()),
+    Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     logger:debug("json ~p", [Json]),
     {json, 201, #{}, #{id => Id}}.
 
-chat(#{req := #{method := <<"GET">>,
-                bindings := #{userid := UserId}}}) ->
+chat(#{req := #{method := <<"GET">>},
+       auth_data := #{id := UserId}}) ->
     case chatli_db:get_all_chats(UserId) of
         {ok, Chats} ->
             {json, 200, #{}, Chats};
@@ -23,12 +23,19 @@ chat(#{req := #{method := <<"GET">>,
             {json, 200, #{}, []}
     end;
 chat(#{req := #{method := <<"POST">>},
-       json := Json}) ->
-    Id = uuid:uuid_to_string(uuid:get_v4()),
+       json := Json,
+       auth_data := #{id := UserId}}) ->
+    Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     Object = maps:merge(#{<<"id">> => Id}, Json),
     case chatli_db:create_chat(Object) of
-        {ok, _} ->
-            {json, 201, #{}, Object};
+        ok ->
+            case chatli_db:add_participant(Id, UserId) of
+                ok ->
+                    {json, 201, #{}, Object};
+                _ ->
+                    logger:warning("Failed to add participant: ~p", [UserId]),
+                    {status, 500}
+            end;
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {status, 500}
@@ -45,7 +52,7 @@ manage_chat(#{req := #{ method := <<"GET">>,
     end;
 manage_chat(#{req := #{ method := <<"DELETE">>,
                         bindings := #{chatid := ChatId}}}) ->
-    logger:debug("chatid: ~p", [ChatId]),
+    chatli_db:delete_chat(ChatId),
     {status, 200}.
 
 participants(#{ req := #{method := <<"GET">>,
@@ -63,16 +70,15 @@ participants(#{ req := #{method := <<"POST">>,
                 json := Json}) ->
     #{<<"id">> := UserId} = Json,
     case chatli_db:add_participant(ChatId, UserId) of
-        {ok, _} ->
+        ok ->
             {status, 201};
         Error ->
             logger:warning("participants error: ~p", [Error]),
             {status, 500}
     end.
 
-manage_participants(#{req := #{ method := <<"DELETE">>},
-                                bindigns := #{chatid := ChatId,
-                                              participantid := ParticipantId}}) ->
-    logger:debug("chatid: ~p participantid: ~p", [ChatId, ParticipantId]),
+manage_participants(#{req := #{ method := <<"DELETE">>,
+                                bindings := #{chatid := ChatId,
+                                              participantid := ParticipantId}}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {status, 200}.

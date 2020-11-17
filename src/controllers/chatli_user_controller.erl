@@ -82,7 +82,7 @@ manage_device(#{req := #{method := <<"GET">>,
     %% Get device
     {json ,200, #{}, #{id => DeviceId}}.
 
-delete_user(#{req := #{method := <<"DELETE">>,
-                       bindings := #{userid := UserId}}}) ->
+delete_user(#{req := #{method := <<"DELETE">>},
+              auth_data := #{id := UserId}}) ->
     chatli_db:delete_user(UserId),
     {status, 200}.

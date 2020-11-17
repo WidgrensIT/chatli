@@ -1,4 +1,4 @@
--module(chatli_user_SUITE).
+-module(chatli_SUITE).
 
 -compile(export_all).
 
@@ -58,12 +58,14 @@ init_per_suite(_Config) ->
 %% @end
 %%--------------------------------------------------------------------
 end_per_suite(Config) ->
-    #{object := #{id := Id}} = proplists:get_value(user1, Config),
-    #{object := #{id := Id2}} = proplists:get_value(user2, Config),
+    #{object := #{id := Id},
+      token := Token} = proplists:get_value(user1, Config),
+    #{object := #{id := Id2},
+      token := Token2} = proplists:get_value(user2, Config),
     Path = [?BASEPATH, <<"/client/user/">>, Id],
-    shttpc:delete(Path, opts()),
+    shttpc:delete(Path, opts(Token)),
     Path2 = [?BASEPATH, <<"/client/user/">>, Id2],
-    shttpc:delete(Path2, opts()),
+    shttpc:delete(Path2, opts(Token2)),
     ok.
 
 %%--------------------------------------------------------------------
@@ -74,6 +76,13 @@ end_per_suite(Config) ->
 %% Reason = term()
 %% @end
 %%--------------------------------------------------------------------
+init_per_group(chat, Config) ->
+    #{token := Token} = proplists:get_value(user1, Config),
+    Chat = #{<<"name">> => <<"my c hat">>,
+             <<"description">> => <<"This is a c hat">>},
+    Path = [?BASEPATH, <<"/client/chat">>],
+    #{status := {201, _}, body := RespBody} = shttpc:post(Path, encode(Chat), opts(Token)),
+    [{chat, decode(RespBody)}|Config];
 init_per_group(_GroupName, Config) ->
     Config.
 
@@ -84,6 +93,11 @@ init_per_group(_GroupName, Config) ->
 %% Config0 = Config1 = [tuple()]
 %% @end
 %%--------------------------------------------------------------------
+end_per_group(chat, Config) ->
+    #{token := Token} = proplists:get_value(user1, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    Path = [?BASEPATH, <<"/client/chat/">>, ChatId],
+    #{status := {200, _}} = shttpc:delete(Path, opts(Token));    
 end_per_group(_GroupName, _Config) ->
     ok.
 
@@ -123,7 +137,9 @@ end_per_testcase(_TestCase, _Config) ->
 %% @end
 %%--------------------------------------------------------------------
 groups() ->
-    [].
+    [{chat, [sequence], [add_participant,
+                         list_participant,
+                         remove_participant]}].
 
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -134,15 +150,8 @@ groups() ->
 %% @end
 %%--------------------------------------------------------------------
 all() -> 
-    [get_all_users].
-
-%%--------------------------------------------------------------------
-%% @spec TestCase() -> Info
-%% Info = [tuple()]
-%% @end
-%%--------------------------------------------------------------------
-my_test_case() -> 
-    [].
+    [get_all_users,
+     {group, chat}].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase(Config0) ->
@@ -158,6 +167,32 @@ get_all_users(Config) ->
     Path = [?BASEPATH, <<"/client/user">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
     2 = length(decode(RespBody)).
+
+add_participant(Config) ->
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{object := #{id := UserId2}} = proplists:get_value(user2, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
+    #{status := {201, _}} = shttpc:post(Path, encode(#{id => UserId2}), opts(Token)).
+
+list_participant(Config) ->
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
+    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    #{participants := Participants} = decode(RespBody), 
+    2 = length(Participants).
+
+remove_participant(Config) ->
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{object := #{id := UserId2}} = proplists:get_value(user2, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant/">>, UserId2],
+    #{status := {200, _}} = shttpc:delete(Path, opts(Token)),
+    ListPath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
+    #{status := {200, _}, body := RespBody} = shttpc:get(ListPath, opts(Token)),
+    #{participants := Participants} = decode(RespBody), 
+    1 = length(Participants).
 
 opts() ->
     opts(undefined).
