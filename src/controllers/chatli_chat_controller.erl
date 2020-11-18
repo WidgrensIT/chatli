@@ -17,7 +17,6 @@ message(#{req := #{method := <<"POST">>},
                           <<"sender">> => UserId}, Json),
     case chatli_db:create_message(Object) of
         ok ->
-            ok = chatli_callback:send(Object),
             {json, 201, #{}, #{id => Id}};
         _ ->
             {status, 400}
