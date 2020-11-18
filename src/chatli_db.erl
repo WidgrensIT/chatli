@@ -7,7 +7,7 @@
          delete_user/1,
          get_all_users/0,
          create_message/1,
-         get_message/1,
+         get_message/2,
          get_chat_messages/1,
          create_chat/1,
          get_chat/1,
@@ -15,7 +15,14 @@
          delete_chat/1,
          add_participant/2,
          remove_participant/2,
-         get_participants/1]).
+         get_participants/1,
+         upsert_device/3,
+         get_device/2,
+         get_all_devices/1,
+         delete_device/2,
+         create_callback/3,
+         get_callback/1,
+         delete_callback/1]).
 
 create_user(#{id := Id,
               username := Username,
@@ -26,7 +33,7 @@ create_user(#{id := Id,
     query1(SQL, [Id, Username, PhoneNumber, Email, Password]).
 
 get_user(UserId) ->
-    SQL = <<"SELECT * FROM chatli_user WHERE id = $1">>,
+    SQL = <<"SELECT id, username, phone_number, email FROM chatli_user WHERE id = $1">>,
     query1(SQL, [UserId]).
 
 get_login(Username, Password) ->
@@ -46,19 +53,30 @@ get_all_users() ->
     query(SQL, []).
 
 create_message(#{<<"id">> := Id,
-                 <<"chat_id">> := ChatId,
+                 <<"chatId">> := ChatId,
                  <<"payload">> := Payload,
-                 <<"sender">> := UserId,
-                 <<"timestamp">> := Timestamp}) ->
-    SQL = <<"INSERT INTO message (id, chat_id, payload, sender, timestamp) VALUES ($1, $2, $3, $4, $5)">>,
-    query1(SQL, [Id, ChatId, Payload, UserId, Timestamp]).
+                 <<"sender">> := UserId}) ->
+    SQL = <<"INSERT INTO message (id, chat_id, payload, sender) VALUES ($1, $2, $3, $4)">>,
+    query1(SQL, [Id, ChatId, Payload, UserId]).
 
-get_message(MessageId) ->
-    SQL = <<"SELECT * FROM message WHERE id = $1">>,
-    query1(SQL, [MessageId]).
+get_message(ChatId, MessageId) ->
+    SQL = <<"SELECT id,
+                    chat_id,
+                    payload,
+                    sender,
+                    DATE_PART('epoch', timestamp)
+            FROM message
+            WHERE chat_id = $1 AND id = $2">>,
+    query1(SQL, [ChatId, MessageId]).
 
 get_chat_messages(ChatId) ->
-    SQL = <<"SELECT * FROM message where chat_id = $1">>,
+    SQL = <<"SELECT id,
+                    chat_id,
+                    payload,
+                    sender,
+                    DATE_PART('epoch', timestamp)
+            FROM message
+            WHERE chat_id = $1">>,
     query(SQL, [ChatId]).
 
 create_chat(#{<<"id">> := Id,
@@ -95,6 +113,60 @@ get_participants(ChatId) ->
     SQL = <<"SELECT user_id FROM participant WHERE chat_id = $1">>,
     query(SQL, [ChatId]).
 
+upsert_device(DeviceId, UserId, Name) ->
+  delete_device(DeviceId, UserId),
+    SQL = <<"INSERT INTO
+               device
+               (
+                 id,
+                 user_id,
+                 name
+               ) VALUES (
+                 $1,
+                 $2,
+                 $3
+               )">>,
+    query1(SQL, [DeviceId, UserId, Name]).
+
+delete_device(DeviceId, UserId) ->
+    SQL = <<"DELETE FROM
+                device
+            WHERE
+                id = $1 AND
+                user_id = $2">>,
+    query(SQL, [DeviceId, UserId]).
+
+get_device(DeviceId, UserId) ->
+    SQL = <<"SELECT id, name FROM device WHERE id = $1 AND user_id = $2">>,
+    query1(SQL, [DeviceId, UserId]).
+
+get_all_devices(UserId) ->
+    SQL = <<"SELECT id, name FROM device WHERE user_id = $1">>,
+    query(SQL, [UserId]).
+
+create_callback(CallbackId, UserId, Url) ->
+    SQL = <<"INSERT INTO callback
+                (
+                  id,
+                  user_id,
+                  url
+                )
+             VALUES
+               (
+                 $1,
+                 $2,
+                 $3
+               )">>,
+    query1(SQL, [CallbackId, UserId, Url]).
+
+get_callback(CallbackId) ->
+    SQL = <<"SELECT * FROM callback WHERE id = $1">>,
+    query1(SQL, [CallbackId]).
+
+delete_callback(CallbackId) ->
+    SQL = <<"DELETE FROM callback WHERE id = $1">>,
+    query1(SQL, [CallbackId]).
+
 % Expect 1 result
 query1(SQL, Values) ->
     case pgo:query(SQL, Values) of
@@ -110,8 +182,7 @@ query1(SQL, Values) ->
           num_rows := 1} -> ok;
         #{command := delete} -> undefined;
         {error, Error} ->
-            logger:error("Error: ~p on SQL ~p Values ~p", [Error, SQL,
-                                                                             Values]),
+            logger:error("Error: ~p on SQL ~p Values ~p", [Error, SQL, Values]),
             {error, Error}
     end.
 

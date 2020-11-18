@@ -69,20 +69,34 @@ manage_user(#{ req := #{method := <<"PUT">>,
     %% Change name on user or phone number
     {json, 200, #{}, #{id => UserId}}.
 
-device(#{req := #{method := <<"GET">>}}) ->
-    %% Get users devices
-    {json, 200, #{}, []}.
+device(#{req := #{method := <<"GET">>},
+         auth_data := #{id := UserId}}) ->
+    {ok, Result} = chatli_db:get_all_devices(UserId),
+    {json, 200, #{}, Result}.
 
 manage_device(#{req := #{ method := <<"PUT">>,
-                          bindings := #{deviceid := DeviceId }}}) ->
-    %% Upsert the device and token
-    {json, 200, #{}, #{id => DeviceId}};
+                          bindings := #{deviceid := DeviceId }},
+                auth_data := #{id := UserId},
+                json := #{<<"name">> := Name}}) ->
+    ok = chatli_db:upsert_device(DeviceId, UserId, Name),
+    {status, 200};
 manage_device(#{req := #{method := <<"GET">>,
-                         bindings := #{devicdeid := DeviceId}}}) ->
-    %% Get device
-    {json ,200, #{}, #{id => DeviceId}}.
+                         bindings := #{deviceid := DeviceId}},
+                auth_data := #{id := UserId}}) ->
+    case chatli_db:get_device(DeviceId, UserId) of
+        {ok, Result} ->
+            {json ,200, #{}, Result};
+        _ ->
+            {status, 404}
+    end;
+manage_device(#{req := #{method := <<"DELETE">>,
+                         bindings := #{deviceid := DeviceId}},
+              auth_data := #{id := UserId}}) ->
+    chatli_db:delete_device(DeviceId, UserId),
+    {status, 200}.
 
 delete_user(#{req := #{method := <<"DELETE">>},
               auth_data := #{id := UserId}}) ->
     chatli_db:delete_user(UserId),
     {status, 200}.
+
