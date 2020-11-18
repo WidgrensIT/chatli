@@ -2,7 +2,9 @@
   security => false,
   routes => [
             {"/signup", { chatli_user_controller, signup}, #{methods => [post]}},
-            {"/login", { chatli_user_controller, login}, #{methods => [post]}}
+            {"/login", { chatli_user_controller, login}, #{methods => [post]}},
+            {"/callback", { chatli_callback_controller, create_callback}, #{method => [post]}},
+            {"/callback/:callbackid", { chatli_callback_controlelr, manage_callback}, #{method => [get, delete]}}
            ],
  statics => [
              {"/assets/[...]", "assets"}

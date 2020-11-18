@@ -90,6 +90,11 @@ init_per_group(device, Config) ->
     Path = [?BASEPATH, <<"/client/device/">>, DeviceId],
     #{status := {200, _}} = shttpc:put(Path, encode(Device), opts(Token)),
     [{device, maps:merge(#{id => DeviceId}, Device)}|Config];
+init_per_group(callback, Config) ->
+    Path = [?BASEPATH, <<"/v1/callback">>],
+    Object = #{url => <<"http://localhost:8090/receiver">>},
+    #{status := {201, _}, body := RespBody} = shttpc:post(Path, Object, opts()),
+    [{callback, decode(RespBody)} | Config];
 init_per_group(_GroupName, Config) ->
     Config.
 
@@ -110,6 +115,10 @@ end_per_group(device, Config) ->
     #{id := DeviceId} = proplists:get_value(device, Config),
     Path = [?BASEPATH, <<"/client/device/">>, DeviceId],
     #{status := {200, _}} = shttpc:delete(Path, opts(Token));
+end_per_group(callback, Config) ->
+    #{id := CallbackId} = proplists:get_value(callback, Config),
+    Path = [?BASEPATH, <<"/v1/callback/">>, CallbackId],
+    #{status := {200, _}} = shttpc:delete(Path, opts());
 end_per_group(_GroupName, _Config) ->
     ok.
 
@@ -150,11 +159,12 @@ end_per_testcase(_TestCase, _Config) ->
 %%--------------------------------------------------------------------
 groups() ->
     [{chat, [], [add_participant,
-                         list_participant,
-                         remove_participant,
-                         send_message,
-                         get_all_message]},
-     {device, [], [get_all_devices]}].
+                 list_participant,
+                 remove_participant,
+                 send_message,
+                 get_all_message]},
+     {device, [], [get_all_devices]},
+     {callback, [], [get_callback]}].
 
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -236,6 +246,11 @@ get_all_devices(Config) ->
     #{status := {200, _}, body := DeviceRespBody} = shttpc:get(DevicePath, opts(Token)),
     #{id := DeviceId} = DeviceObj = decode(DeviceRespBody).
 
+get_callback(Config) ->
+    #{id := CallbackId} = proplists:get_value(callback, Config),
+    Path = [?BASEPATH, <<"/v1/callback/">>, CallbackId],
+    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts()),
+    #{id := CallbackId} = decode(RespBody).
 
 opts() ->
     opts(undefined).

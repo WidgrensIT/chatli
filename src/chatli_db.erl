@@ -19,7 +19,10 @@
          upsert_device/3,
          get_device/2,
          get_all_devices/1,
-         delete_device/2]).
+         delete_device/2,
+         create_callback/3,
+         get_callback/1,
+         delete_callback/1]).
 
 create_user(#{id := Id,
               username := Username,
@@ -140,6 +143,29 @@ get_device(DeviceId, UserId) ->
 get_all_devices(UserId) ->
     SQL = <<"SELECT id, name FROM device WHERE user_id = $1">>,
     query(SQL, [UserId]).
+
+create_callback(CallbackId, UserId, Url) ->
+    SQL = <<"INSERT INTO callback
+                (
+                  id,
+                  user_id,
+                  url
+                )
+             VALUES
+               (
+                 $1,
+                 $2,
+                 $3
+               )">>,
+    query1(SQL, [CallbackId, UserId, Url]).
+
+get_callback(CallbackId) ->
+    SQL = <<"SELECT * FROM callback WHERE id = $1">>,
+    query1(SQL, [CallbackId]).
+
+delete_callback(CallbackId) ->
+    SQL = <<"DELETE FROM callback WHERE id = $1">>,
+    query1(SQL, [CallbackId]).
 
 % Expect 1 result
 query1(SQL, Values) ->

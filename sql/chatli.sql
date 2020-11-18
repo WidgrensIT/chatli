@@ -48,3 +48,10 @@ CREATE TABLE push_token
     modified timestamp DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY(device_id, type)
 );
+
+CREATE TABLE callback
+(
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    url VARCHAR NOT NULL
+);
