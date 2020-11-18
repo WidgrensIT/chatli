@@ -23,5 +23,5 @@
             {"/chat/:chatid/participant", {chatli_chat_controller, participants}, #{methods => [get, post]}},
             {"/chat/:chatid/participant/:participantid", {chatli_chat_controller, manage_participants}, #{methods => [get, put, delete]}},
             {"/device", {chatli_user_controller, device}, #{methods => [get]}},
-            {"/device/:deviceid", {chatli_user_controller, manage_device}, #{methods => [get, put]}}
+            {"/device/:deviceid", {chatli_user_controller, manage_device}, #{methods => [get, put, delete]}}
 ]}.

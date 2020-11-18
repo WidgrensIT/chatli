@@ -83,6 +83,13 @@ init_per_group(chat, Config) ->
     Path = [?BASEPATH, <<"/client/chat">>],
     #{status := {201, _}, body := RespBody} = shttpc:post(Path, encode(Chat), opts(Token)),
     [{chat, decode(RespBody)}|Config];
+init_per_group(device, Config) ->
+    #{token := Token} = proplists:get_value(user1, Config),
+    Device = #{name => <<"my device">>},
+    DeviceId = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
+    Path = [?BASEPATH, <<"/client/device/">>, DeviceId],
+    #{status := {200, _}} = shttpc:put(Path, encode(Device), opts(Token)),
+    [{device, maps:merge(#{id => DeviceId}, Device)}|Config];
 init_per_group(_GroupName, Config) ->
     Config.
 
@@ -97,7 +104,12 @@ end_per_group(chat, Config) ->
     #{token := Token} = proplists:get_value(user1, Config),
     #{id := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId],
-    #{status := {200, _}} = shttpc:delete(Path, opts(Token));    
+    #{status := {200, _}} = shttpc:delete(Path, opts(Token));
+end_per_group(device, Config) ->
+    #{token := Token} = proplists:get_value(user1, Config),
+    #{id := DeviceId} = proplists:get_value(device, Config),
+    Path = [?BASEPATH, <<"/client/device/">>, DeviceId],
+    #{status := {200, _}} = shttpc:delete(Path, opts(Token));
 end_per_group(_GroupName, _Config) ->
     ok.
 
@@ -137,11 +149,12 @@ end_per_testcase(_TestCase, _Config) ->
 %% @end
 %%--------------------------------------------------------------------
 groups() ->
-    [{chat, [sequence], [add_participant,
+    [{chat, [], [add_participant,
                          list_participant,
                          remove_participant,
                          send_message,
-                         get_all_message]}].
+                         get_all_message]},
+     {device, [], [get_all_devices]}].
 
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -151,9 +164,10 @@ groups() ->
 %% Reason = term()
 %% @end
 %%--------------------------------------------------------------------
-all() -> 
+all() ->
     [get_all_users,
-     {group, chat}].
+     {group, chat},
+     {group, device}].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase(Config0) ->
@@ -182,7 +196,7 @@ list_participant(Config) ->
     #{id := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
-    #{participants := Participants} = decode(RespBody), 
+    #{participants := Participants} = decode(RespBody),
     2 = length(Participants).
 
 remove_participant(Config) ->
@@ -193,7 +207,7 @@ remove_participant(Config) ->
     #{status := {200, _}} = shttpc:delete(Path, opts(Token)),
     ListPath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(ListPath, opts(Token)),
-    #{participants := Participants} = decode(RespBody), 
+    #{participants := Participants} = decode(RespBody),
     1 = length(Participants).
 
 send_message(Config) ->
@@ -211,8 +225,16 @@ get_all_message(Config) ->
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
     #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
     #{id := MessageId} = MessageObj = decode(MessageRespBody).
-    
-    
+
+get_all_devices(Config) ->
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{id := DeviceId} = DeviceObj = proplists:get_value(device, Config),
+    Path = [?BASEPATH, <<"/client/device">>],
+    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    [#{id := DeviceId}] = [DeviceObj] = decode(RespBody),
+    DevicePath = [?BASEPATH, <<"/client/device/">>, DeviceId],
+    #{status := {200, _}, body := DeviceRespBody} = shttpc:get(DevicePath, opts(Token)),
+    #{id := DeviceId} = DeviceObj = decode(DeviceRespBody).
 
 
 opts() ->

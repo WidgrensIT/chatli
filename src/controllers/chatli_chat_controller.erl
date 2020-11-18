@@ -16,6 +16,7 @@ message(#{req := #{method := <<"POST">>},
     Object = maps:merge(#{<<"id">> => Id,
                           <<"sender">> => UserId}, Json),
     ok = chatli_db:create_message(Object),
+    chatli_callback:send(Object),
     {json, 201, #{}, #{id => Id}}.
 
 get_archive(#{req := #{method := <<"GET">>,

@@ -15,7 +15,11 @@
          delete_chat/1,
          add_participant/2,
          remove_participant/2,
-         get_participants/1]).
+         get_participants/1,
+         upsert_device/3,
+         get_device/2,
+         get_all_devices/1,
+         delete_device/2]).
 
 create_user(#{id := Id,
               username := Username,
@@ -105,6 +109,37 @@ remove_participant(ChatId, UserId) ->
 get_participants(ChatId) ->
     SQL = <<"SELECT user_id FROM participant WHERE chat_id = $1">>,
     query(SQL, [ChatId]).
+
+upsert_device(DeviceId, UserId, Name) ->
+  delete_device(DeviceId, UserId),
+    SQL = <<"INSERT INTO
+               device
+               (
+                 id,
+                 user_id,
+                 name
+               ) VALUES (
+                 $1,
+                 $2,
+                 $3
+               )">>,
+    query1(SQL, [DeviceId, UserId, Name]).
+
+delete_device(DeviceId, UserId) ->
+    SQL = <<"DELETE FROM
+                device
+            WHERE
+                id = $1 AND
+                user_id = $2">>,
+    query(SQL, [DeviceId, UserId]).
+
+get_device(DeviceId, UserId) ->
+    SQL = <<"SELECT id, name FROM device WHERE id = $1 AND user_id = $2">>,
+    query1(SQL, [DeviceId, UserId]).
+
+get_all_devices(UserId) ->
+    SQL = <<"SELECT id, name FROM device WHERE user_id = $1">>,
+    query(SQL, [UserId]).
 
 % Expect 1 result
 query1(SQL, Values) ->
