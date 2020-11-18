@@ -8,12 +8,12 @@ create_callback(#{req := #{method := <<"POST">>},
                             <<"url">> := Url}}) ->
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
 
-    ok = chatli_db:create_callbacks(Id, UserId, Url),
+    ok = chatli_db:create_callback(Id, UserId, Url),
     {json, 201, #{}, #{id => Id}}.
 
 manage_callback(#{req := #{method := <<"GET">>,
                            bindings := #{callbackid := CallbackId}}}) ->
-    {ok, Result} = chatlid_db:get_callback(CallbackId),
+    {ok, Result} = chatli_db:get_callback(CallbackId),
     {json, 200, #{}, Result};
 manage_callback(#{req := #{method := <<"DELETE">>,
                            bindings := #{callbackid := CallbackId}}}) ->

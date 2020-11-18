@@ -15,9 +15,13 @@ message(#{req := #{method := <<"POST">>},
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     Object = maps:merge(#{<<"id">> => Id,
                           <<"sender">> => UserId}, Json),
-    ok = chatli_db:create_message(Object),
-    chatli_callback:send(Object),
-    {json, 201, #{}, #{id => Id}}.
+    case chatli_db:create_message(Object) of
+        ok ->
+            ok = chatli_callback:send(Object),
+            {json, 201, #{}, #{id => Id}};
+        _ ->
+            {status, 400}
+    end.
 
 get_archive(#{req := #{method := <<"GET">>,
                        bindings := #{chatid := ChatId}}}) ->

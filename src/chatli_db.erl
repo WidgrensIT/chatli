@@ -182,8 +182,7 @@ query1(SQL, Values) ->
           num_rows := 1} -> ok;
         #{command := delete} -> undefined;
         {error, Error} ->
-            logger:error("Error: ~p on SQL ~p Values ~p", [Error, SQL,
-                                                                             Values]),
+            logger:error("Error: ~p on SQL ~p Values ~p", [Error, SQL, Values]),
             {error, Error}
     end.
 
