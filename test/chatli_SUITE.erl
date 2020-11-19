@@ -103,25 +103,6 @@ end_per_suite(Config) ->
 %% Reason = term()
 %% @end
 %%--------------------------------------------------------------------
-init_per_group(chat, Config) ->
-    #{token := Token} = proplists:get_value(user1, Config),
-    Chat = #{<<"name">> => <<"my c hat">>,
-             <<"description">> => <<"This is a c hat">>},
-    Path = [?BASEPATH, <<"/client/chat">>],
-    #{status := {201, _}, body := RespBody} = shttpc:post(Path, encode(Chat), opts(Token)),
-    [{chat, decode(RespBody)}|Config];
-init_per_group(device, Config) ->
-    #{token := Token} = proplists:get_value(user1, Config),
-    Device = #{name => <<"my device">>},
-    DeviceId = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
-    Path = [?BASEPATH, <<"/client/device/">>, DeviceId],
-    #{status := {200, _}} = shttpc:put(Path, encode(Device), opts(Token)),
-    [{device, maps:merge(#{id => DeviceId}, Device)}|Config];
-init_per_group(callback, Config) ->
-    Path = [?BASEPATH, <<"/v1/callback">>],
-    Object = #{url => <<"http://localhost:8090/receiver">>},
-    #{status := {201, _}, body := RespBody} = shttpc:post(Path, Object, opts()),
-    [{callback, decode(RespBody)} | Config];
 init_per_group(_GroupName, Config) ->
     Config.
 
@@ -132,20 +113,6 @@ init_per_group(_GroupName, Config) ->
 %% Config0 = Config1 = [tuple()]
 %% @end
 %%--------------------------------------------------------------------
-end_per_group(chat, Config) ->
-    #{token := Token} = proplists:get_value(user1, Config),
-    #{id := ChatId} = proplists:get_value(chat, Config),
-    Path = [?BASEPATH, <<"/client/chat/">>, ChatId],
-    #{status := {200, _}} = shttpc:delete(Path, opts(Token));
-end_per_group(device, Config) ->
-    #{token := Token} = proplists:get_value(user1, Config),
-    #{id := DeviceId} = proplists:get_value(device, Config),
-    Path = [?BASEPATH, <<"/client/device/">>, DeviceId],
-    #{status := {200, _}} = shttpc:delete(Path, opts(Token));
-end_per_group(callback, Config) ->
-    #{id := CallbackId} = proplists:get_value(callback, Config),
-    Path = [?BASEPATH, <<"/v1/callback/">>, CallbackId],
-    #{status := {200, _}} = shttpc:delete(Path, opts());
 end_per_group(_GroupName, _Config) ->
     ok.
 
@@ -185,13 +152,7 @@ end_per_testcase(_TestCase, _Config) ->
 %% @end
 %%--------------------------------------------------------------------
 groups() ->
-    [{chat, [], [add_participant,
-                 list_participant,
-                 remove_participant,
-                 send_message,
-                 get_all_message]},
-     {device, [], [get_all_devices]},
-     {callback, [], [get_callback]}].
+    [].
 
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
