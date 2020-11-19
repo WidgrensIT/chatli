@@ -13,10 +13,12 @@ message(#{req := #{method := <<"POST">>},
           auth_data := #{id := UserId},
           json := Json}) ->
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
+    #{<<"chatId">> := ChatId} = Json,
     Object = maps:merge(#{<<"id">> => Id,
                           <<"sender">> => UserId}, Json),
     case chatli_db:create_message(Object) of
         ok ->
+            ok = chatli_ws_srv:publish(ChatId, json:encode(Object, [maps, binary])),
             {json, 201, #{}, #{id => Id}};
         _ ->
             {status, 400}
