@@ -100,9 +100,15 @@ handle_call({offline, User, Device, Socket}, _, State) ->
                 {noreply, NewState :: term(), Timeout :: timeout()} |
                 {noreply, NewState :: term(), hibernate} |
                 {stop, Reason :: term(), NewState :: term()}.
+handle_cast({callback, UserId, Body}, State) ->
+    logger:debug("Got callback cast"),
+    {ok, Callbacks} = chatli_db:get_user_callbacks(UserId),
+    [send_callback(Url, Body) || #{url := Url} <- Callbacks],
+    {noreply, State};
 handle_cast({publish, Topic, Body}, State) ->
     {ok, Subscribers} = chatli_db:get_participants(Topic),
     [send(Body, online_sockets(UserId)) || #{user_id := UserId} <- Subscribers],
+    [gen_server:cast(self(), {callback, UserId, Body}) || #{user_id := UserId} <- Subscribers],
     {noreply, State}.
 
 
@@ -173,3 +179,10 @@ send(Body, Sockets) ->
 
 online_sockets(User) ->
     ets:match(online, {User, '_', '$1'}).
+
+send_callback(Url, Body) ->
+    logger:debug("Send callback.. ~p", [Url]),
+    logger:debug("body: ~p", [Body]),
+    Opts = #{headers => #{'Content-Type' => <<"application/json">>}, close => true},
+    Response = shttpc:post([Url], Body, Opts),
+    logger:debug(Response).

@@ -22,6 +22,7 @@
          delete_device/2,
          create_callback/3,
          get_callback/1,
+         get_user_callbacks/1,
          delete_callback/1]).
 
 create_user(#{id := Id,
@@ -162,6 +163,10 @@ create_callback(CallbackId, UserId, Url) ->
 get_callback(CallbackId) ->
     SQL = <<"SELECT * FROM callback WHERE id = $1">>,
     query1(SQL, [CallbackId]).
+
+get_user_callbacks(UserId) ->
+    SQL = <<"SELECT url FROM callback where user_id = $1">>,
+    query(SQL, [UserId]).
 
 delete_callback(CallbackId) ->
     SQL = <<"DELETE FROM callback WHERE id = $1">>,
