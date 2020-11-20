@@ -39,21 +39,17 @@ signup(#{req := #{ method := <<"POST">>},
     end.
 
 login(#{req := #{method := <<"POST">>},
-        json := JSON}) ->
-    Username = maps:get(<<"username">>, JSON, undefined),
-    Password = maps:get(<<"password">>, JSON, undefined),
-    case {Username, Password} of
-        {undefined, undefined} ->
-            {status, 400};
-        {_, undefined} ->
-            {status, 400};
-        {undefined, _} ->
-            {status, 400};
-        {Username, Password} ->
-            {ok, User} = chatli_db:get_login(Username, Password),
+        json := #{<<"username">> := Username,
+                  <<"password">> := Password}}) ->
+    case chatli_db:get_login(Username, Password) of
+        {ok, User} ->
             AuthObj = #{access_token => jwerl:sign(maps:remove(password, User), hs512, ?SECRET)},
-            {json, 200, #{}, AuthObj}
-    end.
+            {json, 200, #{}, AuthObj};
+        _ ->
+            {status, 401}
+    end;
+login(_) ->
+    {status, 401}.
 
 manage_user(#{req := #{method := <<"GET">>,
                        bindings := #{userid := UserId}}}) ->
@@ -99,4 +95,3 @@ delete_user(#{req := #{method := <<"DELETE">>},
               auth_data := #{id := UserId}}) ->
     chatli_db:delete_user(UserId),
     {status, 200}.
-
