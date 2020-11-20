@@ -15,7 +15,8 @@ message(#{req := #{method := <<"POST">>},
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     #{<<"chatId">> := ChatId} = Json,
     Object = maps:merge(#{<<"id">> => Id,
-                          <<"sender">> => UserId}, Json),
+                          <<"sender">> => UserId,
+                          <<"timestamp">> => os:system_time(millisecond)}, Json),
     case chatli_db:create_message(Object) of
         ok ->
             ok = chatli_ws_srv:publish(ChatId, json:encode(Object, [maps, binary])),

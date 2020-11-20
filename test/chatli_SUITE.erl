@@ -166,9 +166,9 @@ all() ->
     [get_all_users,
      add_participant,
      list_participant,
-     remove_participant,
      send_message,
      get_all_message,
+     remove_participant,
      get_all_devices,
      get_callback].
 
