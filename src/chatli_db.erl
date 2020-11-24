@@ -6,6 +6,7 @@
          find_user/1,
          delete_user/1,
          get_all_users/0,
+         get_all_other_users/1,
          create_message/1,
          get_message/2,
          get_chat_messages/1,
@@ -52,6 +53,10 @@ delete_user(UserId) ->
 get_all_users() ->
     SQL = <<"SELECT id, avatar, email, phone_number, username FROM chatli_user">>,
     query(SQL, []).
+
+get_all_other_users(UserId) ->
+    SQL = <<"SELECT id, avatar, email, phone_number, username FROM chatli_user WHERE id != $1">>,
+    query(SQL, [UserId]).
 
 create_message(#{<<"id">> := Id,
                  <<"chatId">> := ChatId,

@@ -11,8 +11,9 @@
 
 -include("chatli.hrl").
 
-user(#{req := #{ method := <<"GET">>}}) ->
-    {ok, Users} = chatli_db:get_all_users(),
+user(#{req := #{ method := <<"GET">>},
+       auth_data := #{id := UserId}}) ->
+    {ok, Users} = chatli_db:get_all_other_users(UserId),
     {json, 200, #{}, Users}.
 
 signup(#{req := #{ method := <<"POST">>},
