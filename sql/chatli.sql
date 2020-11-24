@@ -1,9 +1,9 @@
 CREATE TABLE chatli_user
 (
     id uuid PRIMARY KEY,
-    username varchar NOT NULL,
-    phone_number varchar,
-    email varchar,
+    username varchar NOT NULL UNIQUE,
+    phone_number varchar UNIQUE,
+    email varchar UNIQUE,
     avatar varchar,
     password varchar NOT NULL
 );

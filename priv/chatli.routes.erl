@@ -14,7 +14,6 @@
 #{prefix => "/client",
   security => {chatli_auth, auth_jwt},
   routes => [
-            {"/", { chatli_user_controller, manage_user}, #{methods => [get, put, delete]}},
             {"/user", {chatli_user_controller, user}, #{methods => [get]}},
             {"/user/:userid", {chatli_user_controller, delete_user}, #{methods => [delete]}},
             {"/message", {chatli_chat_controller, message}, #{methods => [post]}},
