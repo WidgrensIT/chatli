@@ -4,7 +4,7 @@
 
 -include_lib("common_test/include/ct.hrl").
 
--define(BASEPATH, <<"http://localhost:8080">>).
+-define(BASEPATH, <<"http://localhost:8090">>).
 
 %%--------------------------------------------------------------------
 %% @spec suite() -> Info
