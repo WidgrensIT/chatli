@@ -4,7 +4,9 @@
 
 -include_lib("common_test/include/ct.hrl").
 
--define(BASEPATH, <<"http://localhost:8090">>).
+-define(BASEPATH, <<"http://134.209.238.207:8090">>).
+-define(IP, "134.209.238.207").
+-define(PORT, 8090).
 
 %%--------------------------------------------------------------------
 %% @spec suite() -> Info
@@ -214,10 +216,11 @@ remove_participant(Config) ->
     1 = length(Participants).
 
 send_message(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token,
+      object := #{id := UserId}} =  proplists:get_value(user1, Config),
     #{id := ChatId} = proplists:get_value(chat, Config),
     #{id := DeviceId} = proplists:get_value(device, Config),
-    websocket([<<"/client/device/">>, DeviceId, <<"/ws">>], Token),
+    websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
     Path = [?BASEPATH, <<"/client/message">>],
     #{status := {201, _}, body := MessageBody} = shttpc:post(Path,
                                                              encode(#{chatId => ChatId,
@@ -228,7 +231,7 @@ send_message(Config) ->
         {gun_ws, _ConnPid, _StreamRef0, {text, Msg}} ->
             io:format("~p", [Msg]),
             #{id := MessageId} = decode(Msg)
-    after 2000 ->
+    after 8000 ->
         exit(timeout)
     end.
 
@@ -277,11 +280,11 @@ encode(Json) ->
     json:encode(Json, [maps, binary]).
 
 
-websocket(Path, Token) ->
-    {ok, ConnPid} = gun:open("localhost", 8080, #{transport => tcp}),
+websocket(Path, _Token) ->
+    {ok, ConnPid} = gun:open(?IP, ?PORT, #{transport => tcp}),
     {ok, _Protocol} = gun:await_up(ConnPid),
     io:format("ConnPid: ~p", [ConnPid]),
-    gun:ws_upgrade(ConnPid, Path, [{<<"Authorization">>,<<"Bearer ", Token/binary>>}]),
+    gun:ws_upgrade(ConnPid, Path, []),
 
     receive
         {gun_upgrade, ConnPid, _StreamRef, _Protocols, _Headers} ->

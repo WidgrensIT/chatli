@@ -11,7 +11,8 @@
     stdlib,
     nova,
     pgo,
-    jwerl
+    jwerl,
+    runtime_tools
    ]},
   {env,[]},
   {modules, []},
