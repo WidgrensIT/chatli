@@ -4,9 +4,9 @@
 
 -include_lib("common_test/include/ct.hrl").
 
--define(BASEPATH, <<"http://134.209.238.207:8090">>).
--define(IP, "134.209.238.207").
--define(PORT, 8090).
+-define(BASEPATH, ct:get_config(basepath)).
+-define(IP, ct:get_config(ip)).
+-define(PORT, ct:get_config(port)).
 
 %%--------------------------------------------------------------------
 %% @spec suite() -> Info
