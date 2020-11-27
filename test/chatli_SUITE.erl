@@ -53,6 +53,7 @@ init_per_suite(_Config) ->
     #{id := UserId2} = UserObj2 = decode(base64:decode(Payload2)),
     Chat = #{<<"name">> => <<"my c hat">>,
              <<"description">> => <<"This is a c hat">>,
+             <<"type">> => <<"dm">>,
              <<"participants">> => [#{<<"id">> => UserId2}]},
     ChatPath = [?BASEPATH, <<"/client/chat">>],
     #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
