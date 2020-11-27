@@ -47,19 +47,14 @@ chat(#{req := #{method := <<"GET">>},
             {json, 200, #{}, []}
     end;
 chat(#{req := #{method := <<"POST">>},
-       json := Json,
+       json := #{<<"participants">> := Participants} = Json,
        auth_data := #{id := UserId}}) ->
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     Object = maps:merge(#{<<"id">> => Id}, Json),
     case chatli_db:create_chat(Object) of
         ok ->
-            case chatli_db:add_participant(Id, UserId) of
-                ok ->
-                    {json, 201, #{}, Object};
-                _ ->
-                    logger:warning("Failed to add participant: ~p", [UserId]),
-                    {status, 500}
-            end;
+            [chatli_db:add_participant(Id, UserId2) || #{<<"id">> := UserId2} <- [#{<<"id">> => UserId} | Participants]],
+            {json, 201, #{}, Object};
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {status, 500}

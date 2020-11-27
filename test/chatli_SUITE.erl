@@ -50,9 +50,10 @@ init_per_suite(_Config) ->
                                                                                     password => Password2}), opts()),
     #{access_token := Token2} = decode(LoginRespBody2),
     [_ , Payload2, _] = bstring:tokens(Token2, <<".">>),
-    UserObj2 = decode(base64:decode(Payload2)),
+    #{id := UserId2} = UserObj2 = decode(base64:decode(Payload2)),
     Chat = #{<<"name">> => <<"my c hat">>,
-             <<"description">> => <<"This is a c hat">>},
+             <<"description">> => <<"This is a c hat">>,
+             <<"participants">> => [#{<<"id">> => UserId2}]},
     ChatPath = [?BASEPATH, <<"/client/chat">>],
     #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
     Device = #{name => <<"my device">>},
@@ -166,7 +167,6 @@ groups() ->
 %%--------------------------------------------------------------------
 all() ->
     [get_all_users,
-     add_participant,
      list_participant,
      get_all_chats,
      send_message,
