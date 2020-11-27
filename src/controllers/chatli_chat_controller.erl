@@ -40,7 +40,8 @@ chat(#{req := #{method := <<"GET">>},
        auth_data := #{id := UserId}}) ->
     case chatli_db:get_all_chats(UserId) of
         {ok, Chats} ->
-            {json, 200, #{}, Chats};
+            Chats2 = get_participants(Chats, UserId, []),
+            {json, 200, #{}, Chats2};
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {json, 200, #{}, []}
@@ -78,9 +79,10 @@ manage_chat(#{req := #{ method := <<"DELETE">>,
     chatli_db:delete_chat(ChatId),
     {status, 200}.
 
-participants(#{ req := #{method := <<"GET">>,
-                         bindings := #{chatid := ChatId}}}) ->
-    case chatli_db:get_participants(ChatId) of
+participants(#{req := #{method := <<"GET">>,
+                        bindings := #{chatid := ChatId}},
+               auth_data := #{id := UserId}}) ->
+    case chatli_db:get_all_other_participants(ChatId, UserId) of
         {ok, Participants} ->
             {json, 200, #{}, #{id => ChatId,
                                participants => Participants}};
@@ -105,3 +107,9 @@ manage_participants(#{req := #{ method := <<"DELETE">>,
                                               participantid := ParticipantId}}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {status, 200}.
+
+get_participants([], _, Acc) ->
+    Acc;
+get_participants([#{id := ChatId} = Chat | Chats], UserId, Acc) ->
+    {ok, Participants} = chatli_db:get_all_other_participants(ChatId, UserId),
+    get_participants(Chats, UserId, [maps:merge(#{participants => Participants}, Chat) | Acc]).

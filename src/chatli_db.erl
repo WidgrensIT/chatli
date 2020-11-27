@@ -17,6 +17,7 @@
          add_participant/2,
          remove_participant/2,
          get_participants/1,
+         get_all_other_participants/2,
          upsert_device/3,
          get_device/2,
          get_all_devices/1,
@@ -97,11 +98,11 @@ get_chat(ChatId) ->
     query1(SQL, [ChatId]).
 
 get_all_chats(UserId) ->
-    SQL = <<"SELECT *
+    SQL = <<"SELECT chat.*
              FROM chat
              INNER JOIN participant
-                ON paricipant.user_id = $1
-             WHERE participant.chat_id = chat.id">>,
+                ON participant.user_id = $1 AND
+                   participant.chat_id = chat.id">>,
     query(SQL, [UserId]).
 
 delete_chat(ChatId) ->
@@ -115,6 +116,10 @@ add_participant(ChatId, UserId) ->
 remove_participant(ChatId, UserId) ->
     SQL = <<"DELETE FROM participant WHERE chat_id = $1 AND user_id = $2">>,
     query1(SQL, [ChatId, UserId]).
+
+get_all_other_participants(ChatId, UserId) ->
+    SQL = <<"SELECT user_id AS id FROM participant WHERE chat_id = $1 AND user_id != $2">>,
+    query(SQL, [ChatId, UserId]).
 
 get_participants(ChatId) ->
     SQL = <<"SELECT user_id FROM participant WHERE chat_id = $1">>,

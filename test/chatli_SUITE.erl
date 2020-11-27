@@ -168,6 +168,7 @@ all() ->
     [get_all_users,
      add_participant,
      list_participant,
+     get_all_chats,
      send_message,
      get_all_message,
      remove_participant,
@@ -202,7 +203,14 @@ list_participant(Config) ->
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
     #{participants := Participants} = decode(RespBody),
-    2 = length(Participants).
+    1 = length(Participants).
+
+get_all_chats(Config) ->
+    #{token := Token} = proplists:get_value(user1, Config),
+    Path = [?BASEPATH, <<"/client/chat/">>],
+    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    [#{participants := Participants}] = decode(RespBody),
+    1 = length(Participants).
 
 remove_participant(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
@@ -213,7 +221,7 @@ remove_participant(Config) ->
     ListPath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(ListPath, opts(Token)),
     #{participants := Participants} = decode(RespBody),
-    1 = length(Participants).
+    0 = length(Participants).
 
 send_message(Config) ->
     #{token := Token,
