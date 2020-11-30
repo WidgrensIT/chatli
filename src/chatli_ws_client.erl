@@ -6,8 +6,8 @@
          websocket_info/2,
          terminate/3]).
 
-init(#{req := #{bindings := #{deviceid := Device}},
-       auth_data := #{id := User}}) ->
+init(#{req := #{bindings := #{deviceid := Device,
+                              userid := User}}}) ->
      {ok, #{user => User,
             device => Device}}.
 

@@ -25,5 +25,5 @@
             {"/chat/:chatid/participant/:participantid", {chatli_chat_controller, manage_participants}, #{methods => [get, put, delete]}},
             {"/device", {chatli_user_controller, device}, #{methods => [get]}},
             {"/device/:deviceid", {chatli_user_controller, manage_device}, #{methods => [get, put, delete]}},
-            {"/device/:deviceid/ws", chatli_ws_client, #{protocol => ws, idle_timeout => 15000}}
+            {"/device/:deviceid/user/:userid/ws", chatli_ws_client, #{protocol => ws, idle_timeout => 15000}}
 ]}.

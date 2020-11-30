@@ -13,7 +13,7 @@
 
 user(#{req := #{ method := <<"GET">>},
        auth_data := #{id := UserId}}) ->
-    {ok, Users} = chatli_db:get_all_other_users(UserId),
+    {ok, Users} = chatli_user_db:get_all_other(UserId),
     {json, 200, #{}, Users}.
 
 signup(#{req := #{ method := <<"POST">>},
@@ -35,14 +35,14 @@ signup(#{req := #{ method := <<"POST">>},
         {_, _, undefined} ->
             {status, 400};
         _ ->
-            chatli_db:create_user(Object),
+            chatli_user_db:create(Object),
             {status, 201}
     end.
 
 login(#{req := #{method := <<"POST">>},
         json := #{<<"username">> := Username,
                   <<"password">> := Password}}) ->
-    case chatli_db:get_login(Username, Password) of
+    case chatli_user_db:get_login(Username, Password) of
         {ok, User} ->
             AuthObj = #{access_token => jwerl:sign(maps:remove(password, User), hs512, ?SECRET)},
             {json, 200, #{}, AuthObj};
@@ -54,7 +54,7 @@ login(_) ->
 
 manage_user(#{req := #{method := <<"GET">>,
                        bindings := #{userid := UserId}}}) ->
-    case chatli_db:get_user(UserId) of
+    case chatli_user_db:get(UserId) of
         {ok, User} ->
             {json, 200, #{}, User};
         Error ->
@@ -68,19 +68,19 @@ manage_user(#{ req := #{method := <<"PUT">>,
 
 device(#{req := #{method := <<"GET">>},
          auth_data := #{id := UserId}}) ->
-    {ok, Result} = chatli_db:get_all_devices(UserId),
+    {ok, Result} = chatli_device_db:get_all(UserId),
     {json, 200, #{}, Result}.
 
 manage_device(#{req := #{ method := <<"PUT">>,
                           bindings := #{deviceid := DeviceId }},
                 auth_data := #{id := UserId},
                 json := #{<<"name">> := Name}}) ->
-    ok = chatli_db:upsert_device(DeviceId, UserId, Name),
+    ok = chatli_device_db:upsert(DeviceId, UserId, Name),
     {status, 200};
 manage_device(#{req := #{method := <<"GET">>,
                          bindings := #{deviceid := DeviceId}},
                 auth_data := #{id := UserId}}) ->
-    case chatli_db:get_device(DeviceId, UserId) of
+    case chatli_device_db:get(DeviceId, UserId) of
         {ok, Result} ->
             {json ,200, #{}, Result};
         _ ->
@@ -89,10 +89,10 @@ manage_device(#{req := #{method := <<"GET">>,
 manage_device(#{req := #{method := <<"DELETE">>,
                          bindings := #{deviceid := DeviceId}},
               auth_data := #{id := UserId}}) ->
-    chatli_db:delete_device(DeviceId, UserId),
+    chatli_device_db:delete(DeviceId, UserId),
     {status, 200}.
 
 delete_user(#{req := #{method := <<"DELETE">>},
               auth_data := #{id := UserId}}) ->
-    chatli_db:delete_user(UserId),
+    chatli_user_db:delete(UserId),
     {status, 200}.

@@ -40,25 +40,21 @@ chat(#{req := #{method := <<"GET">>},
        auth_data := #{id := UserId}}) ->
     case chatli_db:get_all_chats(UserId) of
         {ok, Chats} ->
-            {json, 200, #{}, Chats};
+            Chats2 = get_participants(Chats, UserId, []),
+            {json, 200, #{}, Chats2};
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {json, 200, #{}, []}
     end;
 chat(#{req := #{method := <<"POST">>},
-       json := Json,
+       json := #{<<"participants">> := Participants} = Json,
        auth_data := #{id := UserId}}) ->
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     Object = maps:merge(#{<<"id">> => Id}, Json),
     case chatli_db:create_chat(Object) of
         ok ->
-            case chatli_db:add_participant(Id, UserId) of
-                ok ->
-                    {json, 201, #{}, Object};
-                _ ->
-                    logger:warning("Failed to add participant: ~p", [UserId]),
-                    {status, 500}
-            end;
+            [chatli_db:add_participant(Id, UserId2) || #{<<"id">> := UserId2} <- [#{<<"id">> => UserId} | Participants]],
+            {json, 201, #{}, Object};
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {status, 500}
@@ -78,9 +74,10 @@ manage_chat(#{req := #{ method := <<"DELETE">>,
     chatli_db:delete_chat(ChatId),
     {status, 200}.
 
-participants(#{ req := #{method := <<"GET">>,
-                         bindings := #{chatid := ChatId}}}) ->
-    case chatli_db:get_participants(ChatId) of
+participants(#{req := #{method := <<"GET">>,
+                        bindings := #{chatid := ChatId}},
+               auth_data := #{id := UserId}}) ->
+    case chatli_db:get_all_other_participants(ChatId, UserId) of
         {ok, Participants} ->
             {json, 200, #{}, #{id => ChatId,
                                participants => Participants}};
@@ -105,3 +102,9 @@ manage_participants(#{req := #{ method := <<"DELETE">>,
                                               participantid := ParticipantId}}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {status, 200}.
+
+get_participants([], _, Acc) ->
+    Acc;
+get_participants([#{id := ChatId} = Chat | Chats], UserId, Acc) ->
+    {ok, Participants} = chatli_db:get_all_other_participants(ChatId, UserId),
+    get_participants(Chats, UserId, [maps:merge(#{participants => Participants}, Chat) | Acc]).

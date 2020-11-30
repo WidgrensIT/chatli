@@ -4,7 +4,9 @@
 
 -include_lib("common_test/include/ct.hrl").
 
--define(BASEPATH, <<"http://localhost:8090">>).
+-define(BASEPATH, ct:get_config(basepath)).
+-define(IP, ct:get_config(ip)).
+-define(PORT, ct:get_config(port)).
 
 %%--------------------------------------------------------------------
 %% @spec suite() -> Info
@@ -48,9 +50,11 @@ init_per_suite(_Config) ->
                                                                                     password => Password2}), opts()),
     #{access_token := Token2} = decode(LoginRespBody2),
     [_ , Payload2, _] = bstring:tokens(Token2, <<".">>),
-    UserObj2 = decode(base64:decode(Payload2)),
+    #{id := UserId2} = UserObj2 = decode(base64:decode(Payload2)),
     Chat = #{<<"name">> => <<"my c hat">>,
-             <<"description">> => <<"This is a c hat">>},
+             <<"description">> => <<"This is a c hat">>,
+             <<"type">> => <<"dm">>,
+             <<"participants">> => [#{<<"id">> => UserId2}]},
     ChatPath = [?BASEPATH, <<"/client/chat">>],
     #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
     Device = #{name => <<"my device">>},
@@ -164,8 +168,8 @@ groups() ->
 %%--------------------------------------------------------------------
 all() ->
     [get_all_users,
-     add_participant,
      list_participant,
+     get_all_chats,
      send_message,
      get_all_message,
      remove_participant,
@@ -200,7 +204,14 @@ list_participant(Config) ->
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
     #{participants := Participants} = decode(RespBody),
-    2 = length(Participants).
+    1 = length(Participants).
+
+get_all_chats(Config) ->
+    #{token := Token} = proplists:get_value(user1, Config),
+    Path = [?BASEPATH, <<"/client/chat/">>],
+    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    [#{participants := Participants}] = decode(RespBody),
+    1 = length(Participants).
 
 remove_participant(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
@@ -211,13 +222,14 @@ remove_participant(Config) ->
     ListPath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(ListPath, opts(Token)),
     #{participants := Participants} = decode(RespBody),
-    1 = length(Participants).
+    0 = length(Participants).
 
 send_message(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token,
+      object := #{id := UserId}} =  proplists:get_value(user1, Config),
     #{id := ChatId} = proplists:get_value(chat, Config),
     #{id := DeviceId} = proplists:get_value(device, Config),
-    websocket([<<"/client/device/">>, DeviceId, <<"/ws">>], Token),
+    websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
     Path = [?BASEPATH, <<"/client/message">>],
     #{status := {201, _}, body := MessageBody} = shttpc:post(Path,
                                                              encode(#{chatId => ChatId,
@@ -228,7 +240,7 @@ send_message(Config) ->
         {gun_ws, _ConnPid, _StreamRef0, {text, Msg}} ->
             io:format("~p", [Msg]),
             #{id := MessageId} = decode(Msg)
-    after 2000 ->
+    after 8000 ->
         exit(timeout)
     end.
 
@@ -277,11 +289,11 @@ encode(Json) ->
     json:encode(Json, [maps, binary]).
 
 
-websocket(Path, Token) ->
-    {ok, ConnPid} = gun:open("localhost", 8080, #{transport => tcp}),
+websocket(Path, _Token) ->
+    {ok, ConnPid} = gun:open(?IP, ?PORT, #{transport => tcp}),
     {ok, _Protocol} = gun:await_up(ConnPid),
     io:format("ConnPid: ~p", [ConnPid]),
-    gun:ws_upgrade(ConnPid, Path, [{<<"Authorization">>,<<"Bearer ", Token/binary>>}]),
+    gun:ws_upgrade(ConnPid, Path, []),
 
     receive
         {gun_upgrade, ConnPid, _StreamRef, _Protocols, _Headers} ->
