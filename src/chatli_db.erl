@@ -3,7 +3,7 @@
 -export([create_user/1,
          get_user/1,
          get_login/2,
-         find_user/1,
+         find_user/2,
          delete_user/1,
          get_all_users/0,
          get_all_other_users/1,
@@ -42,9 +42,15 @@ get_login(Username, Password) ->
     SQL = <<"SELECT * FROM chatli_user WHERE username = $1 AND password = $2">>,
     query1(SQL, [Username, Password]).
 
-find_user(PhoneNumber) ->
-    SQL = <<"SELECT * FROM chatli_user WHERE phone_number = $1">>,
-    query1(SQL, [PhoneNumber]).
+find_user(Type, Value) ->
+    Base = <<"SELECT * FROM chatli_user WHERE ">>,
+    WhereSQL = case Type of
+                  <<"email">> ->
+                    <<"email = $1">>;
+                  <<"phone_number">> ->
+                    <<"phone_number = $1">>
+               end,
+    query1(<<Base/binary, WhereSQL/binary>>, [Value]).
 
 delete_user(UserId) ->
     SQL = <<"DELETE FROM chatli_user WHERE id = $1">>,

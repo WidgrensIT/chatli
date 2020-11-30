@@ -4,12 +4,18 @@
          manage_callback/1]).
 
 create_callback(#{req := #{method := <<"POST">>},
-                  json := #{<<"userId">> := UserId,
+                  json := #{<<"type">> := Type,
+                            <<"value">> := Value,
                             <<"url">> := Url}}) ->
-    Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
-
-    ok = chatli_db:create_callback(Id, UserId, Url),
-    {json, 201, #{}, #{id => Id}}.
+    Id = chatli_uuid:get_v4(),
+    {ok, User} = chatli_db:find_user(Type, Value),
+    case User of
+        [] ->
+            {status, 200};
+        #{id := UserId} ->
+            ok = chatli_db:create_callback(Id, UserId, Url),
+            {json, 201, #{}, #{id => Id}}
+    end.
 
 manage_callback(#{req := #{method := <<"GET">>,
                            bindings := #{callbackid := CallbackId}}}) ->
