@@ -20,7 +20,8 @@ CREATE TABLE chat
 (
     id uuid PRIMARY KEY,
     name varchar NOT NULL,
-    description varchar
+    description varchar,
+    type varchar
 );
 
 CREATE TABLE participant
