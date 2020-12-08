@@ -6,6 +6,7 @@
          create_chat/1,
          get_chat/1,
          get_all_chats/1,
+         get_dm_chat/2,
          delete_chat/1,
          add_participant/2,
          remove_participant/2,
@@ -58,6 +59,14 @@ create_chat(#{<<"id">> := Id,
 get_chat(ChatId) ->
     SQL = <<"SELECT * FROM chat WHERE id = $1">>,
     query1(SQL, [ChatId]).
+
+get_dm_chat(User1, User2) ->
+    SQL = <<"SELECT chat.*
+             FROM chat
+             INNER JOIN participant AS p1 ON p1.user_id = $1
+             INNER JOIN participant AS p2 ON p2.user_id = $2
+             WHERE chat.type = '1to1' LIMIT 1">>,
+    query1(SQL, [User1, User2]).
 
 get_all_chats(UserId) ->
     SQL = <<"SELECT chat.*

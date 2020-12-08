@@ -8,11 +8,10 @@ create_callback(#{req := #{method := <<"POST">>},
                             <<"value">> := Value,
                             <<"url">> := Url}}) ->
     Id = chatli_uuid:get_v4(),
-    {ok, User} = chatli_user_db:find(Type, Value),
-    case User of
-        [] ->
-            {status, 200};
-        #{id := UserId} ->
+    case chatli_user_db:find(Type, Value) of
+        undefined ->
+            {status, 404};
+        {ok, #{id := UserId}} ->
             ok = chatli_db:create_callback(Id, UserId, Url),
             {json, 200, #{}, #{id => Id}}
     end.

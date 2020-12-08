@@ -47,24 +47,29 @@ chat(#{req := #{method := <<"GET">>},
             {json, 200, #{}, []}
     end;
 chat(#{req := #{method := <<"POST">>},
-       json := #{<<"participants">> := Participants} = Json,
+       json := #{<<"participants">> := Participants,
+                 <<"type">> := Type} = Json,
        auth_data := #{id := UserId}}) ->
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     Object = maps:merge(#{<<"id">> => Id}, Json),
-    case chatli_db:create_chat(Object) of
-        ok ->
-            [chatli_db:add_participant(Id, UserId2) || #{<<"id">> := UserId2} <- [#{<<"id">> => UserId} | Participants]],
-            {json, 201, #{}, Object};
-        Error ->
-            logger:warning("chat error: ~p", [Error]),
-            {status, 500}
+    case Type of
+        <<"1to1">> ->
+            [#{<<"id">> := UserId2}] = Participants,
+            case chatli_db:get_dm_chat(UserId, UserId2) of
+                undefined ->
+                    create_chat(Object, UserId, Participants, Id);
+                {ok, ChatId} ->
+                    {json, 201, #{}, ChatId}
+            end;
+        _ ->
+            create_chat(Object, UserId, Participants, Id)
     end.
 
 manage_chat(#{req := #{ method := <<"GET">>,
                         bindings := #{chatid := ChatId}}}) ->
     case chatli_db:get_chat(ChatId) of
         {ok, Chat} ->
-            {json, 200, #{}, Chat};
+            {json, 201, #{}, Chat};
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {status, 500}
@@ -108,3 +113,14 @@ get_participants([], _, Acc) ->
 get_participants([#{id := ChatId} = Chat | Chats], UserId, Acc) ->
     {ok, Participants} = chatli_db:get_all_other_participants(ChatId, UserId),
     get_participants(Chats, UserId, [maps:merge(#{participants => Participants}, Chat) | Acc]).
+
+
+create_chat(Object, UserId, Participants, Id) ->
+    case chatli_db:create_chat(Object) of
+         ok ->
+            [chatli_db:add_participant(Id, UserId2) || #{<<"id">> := UserId2} <- [#{<<"id">> => UserId} | Participants]],
+            {json, 201, #{}, Object};
+        Error ->
+            logger:warning("chat error: ~p", [Error]),
+            {status, 500}
+    end.
