@@ -53,7 +53,7 @@ init_per_suite(_Config) ->
     #{id := UserId2} = UserObj2 = decode(base64:decode(Payload2)),
     Chat = #{<<"name">> => <<"my c hat">>,
              <<"description">> => <<"This is a c hat">>,
-             <<"type">> => <<"dm">>,
+             <<"type">> => <<"1to1">>,
              <<"participants">> => [#{<<"id">> => UserId2}]},
     ChatPath = [?BASEPATH, <<"/client/chat">>],
     #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
@@ -171,6 +171,7 @@ all() ->
     [get_all_users,
      list_participant,
      get_all_chats,
+     create_same_chat_again,
      send_message,
      get_all_message,
      remove_participant,
@@ -213,6 +214,18 @@ get_all_chats(Config) ->
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
     [#{participants := Participants}] = decode(RespBody),
     1 = length(Participants).
+
+create_same_chat_again(Config) ->
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{object := #{id := UserId2}} =  proplists:get_value(user2, Config),
+    Chat = #{<<"name">> => <<"my c hat">>,
+             <<"description">> => <<"This is a c hat">>,
+             <<"type">> => <<"1to1">>,
+             <<"participants">> => [#{<<"id">> => UserId2}]},
+    ChatPath = [?BASEPATH, <<"/client/chat">>],
+    #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
+    #{id := ChatId} = decode(ChatRespBody).
 
 remove_participant(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
