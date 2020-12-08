@@ -80,7 +80,7 @@ remove_participant(ChatId, UserId) ->
     query1(SQL, [ChatId, UserId]).
 
 get_all_other_participants(ChatId, UserId) ->
-    SQL = <<"SELECT user_id AS id FROM participant WHERE chat_id = $1 AND user_id != $2">>,
+    SQL = <<"SELECT chatli_user.id, chatli_user.username, chatli_user.email FROM participant INNER JOIN chatli_user ON chatli_user.id = participant.user_id WHERE participant.chat_id = $1 AND participant.user_id != $2">>,
     query(SQL, [ChatId, UserId]).
 
 get_participants(ChatId) ->
