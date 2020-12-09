@@ -58,8 +58,9 @@ chat(#{req := #{method := <<"POST">>},
             case chatli_db:get_dm_chat(UserId, UserId2) of
                 undefined ->
                     create_chat(Object, UserId, Participants, Id);
-                {ok, ChatId} ->
-                    {json, 201, #{}, ChatId}
+                {ok, Chat} ->
+                    [Chat0|_] = get_participants([Chat], UserId, []),
+                    {json, 201, #{}, Chat0}
             end;
         _ ->
             create_chat(Object, UserId, Participants, Id)
@@ -134,8 +135,17 @@ create_chat(Object, UserId, Participants, Id) ->
     end.
 
 event_message(ChatId, Sender, User, Action) ->
-    #{<<"chat_id">> => ChatId,
-      <<"sender">> => Sender,
-      <<"payload">> => #{<<"user">> => User},
-      <<"type">> => <<"event">>,
-      <<"action">> => Action}.
+    Msg = #{<<"chatId">> => ChatId,
+            <<"sender">> => Sender,
+            <<"payload">> => #{<<"user">> => maps_keys_to_binary(User)},
+            <<"type">> => <<"event">>,
+            <<"action">> => Action},
+    json:encode(Msg, [binary, maps]).
+
+
+maps_keys_to_binary(Map) when is_map(Map) ->
+    maps:from_list(maps_keys_to_binary(maps:to_list(Map)));
+maps_keys_to_binary([]) ->
+    [];
+maps_keys_to_binary([{Key, Value}|Tl]) when is_atom(Key) ->
+    [{erlang:atom_to_binary(Key), Value}|maps_keys_to_binary(Tl)].
