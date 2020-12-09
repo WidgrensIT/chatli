@@ -98,7 +98,7 @@ participants(#{ req := #{method := <<"POST">>,
     case chatli_db:add_participant(ChatId, UserId) of
         ok ->
             {ok, User} = chatli_user_db:get(UserId),
-            Message = event_message(ChatId, Sender, User, <<"joined">>),
+            Message = event_message(ChatId, Sender, User, <<"join">>),
             chatli_ws_srv:publish(ChatId, Message),
             {status, 201};
         Error ->
@@ -112,7 +112,7 @@ manage_participants(#{req := #{ method := <<"DELETE">>,
                       auth_data := #{id := Sender}}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {ok, User} = chatli_user_db:get(ParticipantId),
-    Message = event_message(ChatId, Sender, User, <<"joined">>),
+    Message = event_message(ChatId, Sender, User, <<"leave">>),
     chatli_ws_srv:publish(ChatId, Message),
     {status, 200}.
 
