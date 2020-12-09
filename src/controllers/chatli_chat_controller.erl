@@ -92,10 +92,14 @@ participants(#{req := #{method := <<"GET">>,
     end;
 participants(#{ req := #{method := <<"POST">>,
                          bindings := #{chatid := ChatId}},
-                json := Json}) ->
+                json := Json,
+                auth_data := #{id := Sender}}) ->
     #{<<"id">> := UserId} = Json,
     case chatli_db:add_participant(ChatId, UserId) of
         ok ->
+            {ok, User} = chatli_user_db:get(UserId),
+            Message = event_message(ChatId, Sender, User, <<"joined">>),
+            chatli_ws_srv:publish(ChatId, Message),
             {status, 201};
         Error ->
             logger:warning("participants error: ~p", [Error]),
@@ -104,8 +108,12 @@ participants(#{ req := #{method := <<"POST">>,
 
 manage_participants(#{req := #{ method := <<"DELETE">>,
                                 bindings := #{chatid := ChatId,
-                                              participantid := ParticipantId}}}) ->
+                                              participantid := ParticipantId},
+                      auth_data := #{id := Sender}}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
+    {ok, User} = chatli_user_db:get(ParticipantId),
+    Message = event_message(ChatId, Sender, User, <<"joined">>),
+    chatli_ws_srv:publish(ChatId, Message),
     {status, 200}.
 
 get_participants([], _, Acc) ->
@@ -124,3 +132,10 @@ create_chat(Object, UserId, Participants, Id) ->
             logger:warning("chat error: ~p", [Error]),
             {status, 500}
     end.
+
+event_message(ChatId, Sender, User, Action) ->
+    #{<<"chat_id">> => ChatId,
+      <<"sender">> => Sender,
+      <<"payload">> => #{<<"user">> => User},
+      <<"type">> => <<"event">>,
+      <<"action">> => Action}.
