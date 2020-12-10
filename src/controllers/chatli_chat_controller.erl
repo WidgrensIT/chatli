@@ -114,8 +114,11 @@ manage_participants(#{req := #{ method := <<"DELETE">>,
     chatli_db:remove_participant(ChatId, ParticipantId),
     {ok, User} = chatli_user_db:get(ParticipantId),
     Message = event_message(ChatId, Sender, User, <<"leave">>),
-    chatli_ws_srv:publish(ChatId, Message),
-    {status, 200}.
+    try json:encode(Message, [binary, maps]) of
+        Json -> ok = chatli_ws_srv:publish(ChatId, Json),
+                {status, 200}
+    catch _:_ -> {status, 500}
+    end.
 
 get_participants([], _, Acc) ->
     Acc;
@@ -134,10 +137,10 @@ create_chat(Object, UserId, Participants, Id) ->
             {status, 500}
     end.
 
+-spec event_message(binary(), binary(), map(), binary()) -> map().
 event_message(ChatId, Sender, User, Action) ->
-    Msg = #{<<"chatId">> => ChatId,
-            <<"sender">> => Sender,
-            <<"payload">> => #{<<"user">> => User},
-            <<"type">> => <<"event">>,
-            <<"action">> => Action},
-    json:encode(Msg, [binary, maps]).
+    #{<<"chatId">> => ChatId,
+      <<"sender">> => Sender,
+      <<"payload">> => #{<<"user">> => User},
+      <<"type">> => <<"event">>,
+      <<"action">> => Action}.
