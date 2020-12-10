@@ -59,7 +59,7 @@ chat(#{req := #{method := <<"POST">>},
                 undefined ->
                     create_chat(Object, UserId, Participants, Id);
                 {ok, Chat} ->
-                    [Chat0|_] = get_participants([Chat], UserId, []),
+                    [Chat0] = get_participants([Chat], UserId, []),
                     {json, 201, #{}, Chat0}
             end;
         _ ->
@@ -109,8 +109,8 @@ participants(#{ req := #{method := <<"POST">>,
 
 manage_participants(#{req := #{ method := <<"DELETE">>,
                                 bindings := #{chatid := ChatId,
-                                              participantid := ParticipantId},
-                      auth_data := #{id := Sender}}}) ->
+                                              participantid := ParticipantId}},
+                      auth_data := #{id := Sender}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {ok, User} = chatli_user_db:get(ParticipantId),
     Message = event_message(ChatId, Sender, User, <<"leave">>),
@@ -137,15 +137,7 @@ create_chat(Object, UserId, Participants, Id) ->
 event_message(ChatId, Sender, User, Action) ->
     Msg = #{<<"chatId">> => ChatId,
             <<"sender">> => Sender,
-            <<"payload">> => #{<<"user">> => maps_keys_to_binary(User)},
+            <<"payload">> => #{<<"user">> => User},
             <<"type">> => <<"event">>,
             <<"action">> => Action},
     json:encode(Msg, [binary, maps]).
-
-
-maps_keys_to_binary(Map) when is_map(Map) ->
-    maps:from_list(maps_keys_to_binary(maps:to_list(Map)));
-maps_keys_to_binary([]) ->
-    [];
-maps_keys_to_binary([{Key, Value}|Tl]) when is_atom(Key) ->
-    [{erlang:atom_to_binary(Key), Value}|maps_keys_to_binary(Tl)].

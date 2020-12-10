@@ -63,8 +63,8 @@ get_chat(ChatId) ->
 get_dm_chat(User1, User2) ->
     SQL = <<"SELECT chat.*
              FROM chat
-             INNER JOIN participant AS p1 ON p1.user_id = $1 AND p1.chat_id = chat.id
-             INNER JOIN participant AS p2 ON p2.user_id = $2 AND p2.chat_id = chat.id
+             INNER JOIN participant AS p1 ON p1.user_id = $1
+             INNER JOIN participant AS p2 ON p2.user_id = $2
              WHERE chat.type = '1to1' LIMIT 1">>,
     query1(SQL, [User1, User2]).
 
