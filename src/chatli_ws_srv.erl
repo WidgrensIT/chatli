@@ -185,4 +185,5 @@ send_callback(Url, Body) ->
     logger:debug("body: ~p", [Body]),
     Opts = #{headers => #{'Content-Type' => <<"application/json">>}, close => true},
     Response = shttpc:post([Url], Body, Opts),
-    logger:debug(Response).
+    logger:debug("response: ~p", [Response]),
+    ok.
