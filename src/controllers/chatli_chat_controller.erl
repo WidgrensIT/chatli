@@ -13,10 +13,12 @@ message(#{req := #{method := <<"POST">>},
           auth_data := #{id := UserId},
           json := Json}) ->
     Id = chatli_uuid:get_v4(),
-    #{<<"chatId">> := ChatId} = Json,
+    #{<<"chat_id">> := ChatId} = Json,
     Object = maps:merge(#{<<"id">> => Id,
                           <<"sender">> => UserId,
-                          <<"timestamp">> => os:system_time(millisecond)}, Json),
+                          <<"timestamp">> => os:system_time(millisecond),
+                          <<"type">> => <<"message">>,
+                          <<"action">> => <<"message">>}, Json),
     case chatli_db:create_message(Object) of
         ok ->
             ok = chatli_ws_srv:publish(ChatId, json:encode(Object, [maps, binary])),
@@ -32,8 +34,8 @@ message(#{req := #{method := <<"POST">>} = Req,
             logger:debug("Empty form data"),
             {status, 200};
         FormData ->
-            FileList = save_file(FormData, []),
-            Attachments = build_attachment(FileList, []),
+            [File] = save_file(FormData, []),
+            Attachments = build_attachment(File),
             ChatId = proplists:get_value(<<"chat_id">>, FormData),
             Message = attachments_message(Id, ChatId, Sender, Attachments),
             case chatli_db:create_message(Message) of
@@ -162,12 +164,9 @@ create_chat(Object, UserId, Participants, Id) ->
             {status, 500}
     end.
 
-build_attachment([], Acc) ->
-    Acc;
-build_attachment([{ok, AttachmentId, Mime}|T], Acc) ->
-    Attachment = #{<<"url">> => <<"v1/attachments/", AttachmentId/binary>>,
-                   <<"mime">> => Mime},
-    build_attachment(T, [Attachment|Acc]).
+build_attachment({ok, AttachmentId, Mime}) ->
+    #{<<"url">> => <<"v1/attachments/", AttachmentId/binary>>,
+      <<"mime">> => Mime}.
 
 -spec event_message(binary(), binary(), binary(), map(), binary()) -> map().
 event_message(Id, ChatId, Sender, User, Action) ->

@@ -12,10 +12,13 @@ CREATE TABLE message
 (
     id uuid PRIMARY KEY,
     chat_id uuid NOT NULL,
-    payload varchar,
+    payload jsonb,
     sender uuid NOT NULL,
+    type varchar,
+    action varchar,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 CREATE TABLE chat
 (
     id uuid PRIMARY KEY,

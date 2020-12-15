@@ -25,9 +25,11 @@ create_message(#{<<"id">> := Id,
                  <<"chat_id">> := ChatId,
                  <<"payload">> := Payload,
                  <<"sender">> := UserId,
-                 <<"timestamp">> := Timestamp}) ->
-    SQL = <<"INSERT INTO message (id, chat_id, payload, sender, timestamp) VALUES ($1, $2, $3, $4, $5)">>,
-    query1(SQL, [Id, ChatId, Payload, UserId, Timestamp]).
+                 <<"timestamp">> := Timestamp,
+                 <<"type">> := Type,
+                 <<"action">> := Action}) ->
+    SQL = <<"INSERT INTO message (id, chat_id, payload, sender, timestamp, type, action) VALUES ($1, $2, $3, $4, $5, $6, $7)">>,
+    query1(SQL, [Id, ChatId, Payload, UserId, Timestamp, Type, Action]).
 
 get_message(ChatId, MessageId) ->
     SQL = <<"SELECT id,
