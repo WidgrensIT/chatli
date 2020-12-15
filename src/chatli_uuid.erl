@@ -7,4 +7,4 @@ get_v4() ->
     uuid:uuid_to_string(uuid:get_v4(), binary_standard).
 
 get_v4_no_dash(list) ->
-    uuid:uuid_to_string(uuid:get_v4(), nodash).
+    uuid:uuid_to_string(uuid:get_v4()).

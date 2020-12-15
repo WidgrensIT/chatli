@@ -299,7 +299,6 @@ upload_attachment(Config) ->
     Filename = filename:basename(FilePath ++ "itworks.jpg"),
     Boundary = chatli_uuid:get_v4(),
     Formatted = format_multipart_formdata(Data, [{<<"chat_id">>, ChatId}], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary),
-    ct:log("Formatted: ~p", [Formatted]),
     #{status := {201, _}, body := MessageBody} = shttpc:post(Path, Formatted, opts(attachment, Token, Boundary)),
     #{id := MessageId} = decode(MessageBody),
     receive
@@ -308,7 +307,15 @@ upload_attachment(Config) ->
             #{id := MessageId} = decode(Msg)
     after 8000 ->
         exit(timeout)
-    end.
+    end,
+    MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
+    #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
+    #{id := MessageId,
+      payload := #{url := Url}} = decode(MessageRespBody),
+    ct:log("attachment url: ~p", [Url]),
+    AttachmentPath = [?BASEPATH, "/", Url],
+    #{status := {200, _}, body := AttachmentBody} = shttpc:get(AttachmentPath, opts(Token)),
+    AttachmentBody = Data.
 
 opts() ->
     opts(undefined).

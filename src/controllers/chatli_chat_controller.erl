@@ -7,7 +7,8 @@
          manage_chat/1,
          participants/1,
          manage_participants/1,
-         get_attachment/1
+         get_attachment/1,
+         get_attachment_no_auth/1
         ]).
 
 message(#{req := #{method := <<"POST">>},
@@ -35,22 +36,16 @@ message(#{req := #{method := <<"POST">>} = Req,
             logger:debug("Empty form data"),
             {status, 200};
         FormData ->
-            [File] = save_file(FormData, []),
-            {ok, AttachmentId, Mime} = File,
-            Attachments = build_attachment(File),
             ChatId = proplists:get_value(<<"chat_id">>, FormData),
+            [File] = save_file(FormData, [], ChatId),
+            Attachments = build_attachment(File, ChatId),
             Message = attachments_message(Id, ChatId, Sender, Attachments),
             case chatli_db:create_message(Message) of
                 ok ->
-                    case chatli_db:create_attachment(AttachmentId, ChatId, Mime) of
-                        ok ->
-                            try json:encode(Message, [binary, maps]) of
-                                Json -> ok = chatli_ws_srv:publish(ChatId, Json),
-                                    {json, 201, #{}, #{id => Id}}
-                            catch _:_ -> {status, 500}
-                            end;
-                        _ ->
-                            {status, 500}
+                    try json:encode(Message, [binary, maps]) of
+                        Json -> ok = chatli_ws_srv:publish(ChatId, Json),
+                                {json, 201, #{}, #{id => Id}}
+                    catch _:_ -> {status, 500}
                     end;
                 _ ->
                     {status, 500}
@@ -63,8 +58,26 @@ get_attachment(#{req := #{method := <<"GET">>,
     case chatli_db:get_attachment(AttachmentId, ChatId) of
         undefined ->
             {status, 404};
-        {ok, _Attachment} ->
-            {status, 200}
+        {ok, #{id := Id,
+               chat_id := ChatId,
+               mime := Mime,
+               length := Length}} ->
+            {ok, Path} = application:get_env(chatli, download_path),
+            {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
+    end.
+
+get_attachment_no_auth(#{req := #{method := <<"GET">>,
+                                  bindings := #{attachmentid := AttachmentId,
+                                                chatid := ChatId}}}) ->
+    case chatli_db:get_attachment(AttachmentId, ChatId) of
+        undefined ->
+            {status, 404};
+        {ok, #{id := Id,
+               chat_id := ChatId,
+               mime := Mime,
+               length := Length}} ->
+            {ok, Path} = application:get_env(chatli, download_path),
+            {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
     end.
 
 get_archive(#{req := #{method := <<"GET">>,
@@ -181,8 +194,8 @@ create_chat(Object, UserId, Participants, Id) ->
             {status, 500}
     end.
 
-build_attachment({ok, AttachmentId, Mime}) ->
-    #{<<"url">> => <<"v1/attachments/", AttachmentId/binary>>,
+build_attachment({ok, AttachmentId, Mime, _}, ChatId) ->
+    #{<<"url">> => <<"client/chat/", ChatId/binary, "/attachment/", AttachmentId/binary>>,
       <<"mime">> => Mime}.
 
 -spec event_message(binary(), binary(), binary(), map(), binary()) -> map().
@@ -205,9 +218,9 @@ attachments_message(Id, ChatId, Sender, Attachments) ->
       <<"action">> => <<"attachments">>,
       <<"timestamp">> => os:system_time(millisecond)}.
 
-save_file([], Acc) ->
+save_file([], Acc, _) ->
     Acc;
-save_file([{file, Bytes, Mime}|T], Acc) ->
+save_file([{file, Bytes, Mime, ByteSize}|T], Acc, ChatId) ->
     UUID = chatli_uuid:get_v4_no_dash(list),
     {ok, Path} = application:get_env(chatli, download_path),
     logger:debug("path: ~p", [Path]),
@@ -215,12 +228,17 @@ save_file([{file, Bytes, Mime}|T], Acc) ->
     logger:debug("dir: ~p", [Dir]),
     case file:write_file(Path ++ UUID, Bytes) of
         ok ->
-            save_file(T, [{ok, list_to_binary(UUID), Mime}|Acc]);
+            case chatli_db:create_attachment(UUID, ChatId, Mime, ByteSize) of
+                 ok ->
+                    save_file(T, [{ok, list_to_binary(UUID), Mime, ByteSize}|Acc], ChatId);
+                 _ ->
+                    save_file([{error, create_attachment}|T], Acc, ChatId)
+            end;
         Error ->
-            save_file(T, [Error|Acc])
+            save_file(T, [Error|Acc], ChatId)
     end;
-save_file([_|T], Acc) ->
-    save_file(T, Acc).
+save_file([_|T], Acc, ChatId) ->
+    save_file(T, Acc, ChatId).
 
 multipart(Req0) ->
     case cowboy_req:read_part(Req0) of
@@ -232,9 +250,9 @@ multipart(Req0) ->
                     [{FieldName, Body}| multipart(Req2)];
                 {file, FieldName, Filename, CType} ->
                     logger:debug("FieldName: ~p FileName: ~p CType: ~p", [FieldName, Filename, CType]),
-                    {Req2, TmpFile} = stream_file(Req1, <<>>),
-                    Mime = <<"image/jpeg">>,
-                    [{file, TmpFile, Mime}|multipart(Req2)]
+                    {Req2, TmpFile, ByteSize} = stream_file(Req1, <<>>),
+                    Mime = mimetypes:filename(Filename),
+                    [{file, TmpFile, Mime, ByteSize}|multipart(Req2)]
             end;
         {done, _} ->
             []
@@ -243,7 +261,8 @@ multipart(Req0) ->
 stream_file(Req0, Body) ->
     case cowboy_req:read_part_body(Req0) of
         {ok, LastBodyChunk, Req} ->
-            {Req, <<Body/binary, LastBodyChunk/binary>>};
+            Chunk = <<Body/binary, LastBodyChunk/binary>>,
+            {Req, Chunk, byte_size(Chunk)};
         {more, BodyChunk, Req} ->
             stream_file(Req, <<Body/binary, BodyChunk/binary>>)
     end.

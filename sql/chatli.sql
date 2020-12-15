@@ -53,7 +53,8 @@ CREATE TABLE attachment
 (
     id UUID PRIMARY KEY,
     chat_id UUID NOT NULL,
-    mime VARCHAR NOT NULL
+    mime VARCHAR NOT NULL,
+    length INTEGER
 );
 
 
