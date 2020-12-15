@@ -36,10 +36,15 @@ message(#{req := #{method := <<"POST">>} = Req,
             Attachments = build_attachment(FileList, []),
             ChatId = proplists:get_value(<<"chat_id">>, FormData),
             Message = attachments_message(Id, ChatId, Sender, Attachments),
-            try json:encode(Message, [binary, maps]) of
-                Json -> ok = chatli_ws_srv:publish(ChatId, Json),
-                    {json, 201, #{}, #{id => Id}}
-            catch _:_ -> {status, 500}
+            case chatli_db:create_message(Message) of
+                ok ->
+                    try json:encode(Message, [binary, maps]) of
+                        Json -> ok = chatli_ws_srv:publish(ChatId, Json),
+                            {json, 201, #{}, #{id => Id}}
+                    catch _:_ -> {status, 500}
+                    end;
+                _ ->
+                    {status, 500}
             end
     end.
 
@@ -160,14 +165,14 @@ create_chat(Object, UserId, Participants, Id) ->
 build_attachment([], Acc) ->
     Acc;
 build_attachment([{ok, AttachmentId, Mime}|T], Acc) ->
-    Attachment = #{url => <<"v1/attachments/", AttachmentId/binary>>,
-                   mime => Mime},
+    Attachment = #{<<"url">> => <<"v1/attachments/", AttachmentId/binary>>,
+                   <<"mime">> => Mime},
     build_attachment(T, [Attachment|Acc]).
 
 -spec event_message(binary(), binary(), binary(), map(), binary()) -> map().
 event_message(Id, ChatId, Sender, User, Action) ->
     #{<<"id">> => Id,
-      <<"chatId">> => ChatId,
+      <<"chat_id">> => ChatId,
       <<"sender">> => Sender,
       <<"payload">> => #{<<"user">> => User},
       <<"type">> => <<"event">>,
@@ -177,7 +182,7 @@ event_message(Id, ChatId, Sender, User, Action) ->
 -spec attachments_message(binary(), binary(), binary(), list(map())) -> map().
 attachments_message(Id, ChatId, Sender, Attachments) ->
     #{<<"id">> => Id,
-      <<"chatId">> => ChatId,
+      <<"chat_id">> => ChatId,
       <<"sender">> => Sender,
       <<"payload">> => Attachments,
       <<"type">> => <<"message">>,
@@ -187,12 +192,14 @@ attachments_message(Id, ChatId, Sender, Attachments) ->
 save_file([], Acc) ->
     Acc;
 save_file([{file, Bytes, Mime}|T], Acc) ->
-    UUID = chatli_uuid:get_v4(),
+    UUID = chatli_uuid:get_v4_no_dash(list),
     {ok, Path} = application:get_env(chatli, download_path),
     logger:debug("path: ~p", [Path]),
-    case file:write(Path ++ binary_to_list(UUID), Bytes) of
+    {ok, Dir} = file:get_cwd(),
+    logger:debug("dir: ~p", [Dir]),
+    case file:write_file(Path ++ UUID, Bytes) of
         ok ->
-            save_file(T, [{ok, UUID, Mime}|Acc]);
+            save_file(T, [{ok, list_to_binary(UUID), Mime}|Acc]);
         Error ->
             save_file(T, [Error|Acc])
     end;

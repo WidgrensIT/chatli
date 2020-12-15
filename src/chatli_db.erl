@@ -22,7 +22,7 @@
 
 
 create_message(#{<<"id">> := Id,
-                 <<"chatId">> := ChatId,
+                 <<"chat_id">> := ChatId,
                  <<"payload">> := Payload,
                  <<"sender">> := UserId,
                  <<"timestamp">> := Timestamp}) ->
