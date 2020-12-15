@@ -16,7 +16,7 @@ CREATE TABLE message
     sender uuid NOT NULL,
     type varchar,
     action varchar,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    timestamp bigint
 );
 
 CREATE TABLE chat
@@ -47,6 +47,13 @@ CREATE TABLE device
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
     name VARCHAR
+);
+
+CREATE TABLE attachment
+(
+    id UUID PRIMARY KEY,
+    chat_id UUID NOT NULL,
+    mime VARCHAR NOT NULL
 );
 
 

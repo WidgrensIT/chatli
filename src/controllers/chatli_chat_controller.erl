@@ -6,7 +6,8 @@
          chat/1,
          manage_chat/1,
          participants/1,
-         manage_participants/1
+         manage_participants/1,
+         get_attachment/1
         ]).
 
 message(#{req := #{method := <<"POST">>},
@@ -35,19 +36,35 @@ message(#{req := #{method := <<"POST">>} = Req,
             {status, 200};
         FormData ->
             [File] = save_file(FormData, []),
+            {ok, AttachmentId, Mime} = File,
             Attachments = build_attachment(File),
             ChatId = proplists:get_value(<<"chat_id">>, FormData),
             Message = attachments_message(Id, ChatId, Sender, Attachments),
             case chatli_db:create_message(Message) of
                 ok ->
-                    try json:encode(Message, [binary, maps]) of
-                        Json -> ok = chatli_ws_srv:publish(ChatId, Json),
-                            {json, 201, #{}, #{id => Id}}
-                    catch _:_ -> {status, 500}
+                    case chatli_db:create_attachment(AttachmentId, ChatId, Mime) of
+                        ok ->
+                            try json:encode(Message, [binary, maps]) of
+                                Json -> ok = chatli_ws_srv:publish(ChatId, Json),
+                                    {json, 201, #{}, #{id => Id}}
+                            catch _:_ -> {status, 500}
+                            end;
+                        _ ->
+                            {status, 500}
                     end;
                 _ ->
                     {status, 500}
             end
+    end.
+
+get_attachment(#{req := #{method := <<"GET">>,
+                          bindings := #{attachmentid := AttachmentId,
+                                        chatid := ChatId}}}) ->
+    case chatli_db:get_attachment(AttachmentId, ChatId) of
+        undefined ->
+            {status, 404};
+        {ok, _Attachment} ->
+            {status, 200}
     end.
 
 get_archive(#{req := #{method := <<"GET">>,

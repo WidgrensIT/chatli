@@ -12,7 +12,7 @@
                              password => "root",
                              decode_opts => [return_rows_as_maps,column_name_as_atom]}}]}]},
  {pg_types, [{uuid_format, string},
-             {json_config, {json, [list, maps, binary], [maps, binary, atom_keys]}}
+             {json_config, {json, [maps, binary], [maps, binary, atom_keys]}}
             ]},
  {nova, [
          {cowboy_configuration, #{

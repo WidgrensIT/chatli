@@ -294,7 +294,7 @@ upload_attachment(Config) ->
     Path = [?BASEPATH, <<"/client/message">>],
     Cwd = file:get_cwd(),
     ct:log("Path: ~p", [Cwd]),
-    FilePath = "/home/daniel/projects/chatli/test/",
+    FilePath = "/mnt/d/projects/chatli/test/",
     {ok, Data} = file:read_file(FilePath ++ "itworks.jpg"),
     Filename = filename:basename(FilePath ++ "itworks.jpg"),
     Boundary = chatli_uuid:get_v4(),
