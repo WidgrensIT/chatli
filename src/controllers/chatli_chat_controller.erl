@@ -12,7 +12,7 @@
 message(#{req := #{method := <<"POST">>},
           auth_data := #{id := UserId},
           json := Json}) ->
-    Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
+    Id = chatli_uuid:get_v4(),
     #{<<"chatId">> := ChatId} = Json,
     Object = maps:merge(#{<<"id">> => Id,
                           <<"sender">> => UserId,
@@ -23,6 +23,17 @@ message(#{req := #{method := <<"POST">>},
             {json, 201, #{}, #{id => Id}};
         _ ->
             {status, 400}
+    end;
+message(#{req := #{method := <<"POST">>} = Req,
+          auth_data := #{id := _UserId}}) ->
+    Id = chatli_uuid:get_v4(),
+    case multipart(Req) of
+        [] ->
+            logger:debug("Empty form data"),
+            {status, 200};
+        FormData ->
+            ok = save_file(FormData),
+            {json, 201, #{}, #{id => Id}}
     end.
 
 get_archive(#{req := #{method := <<"GET">>,
@@ -144,3 +155,44 @@ event_message(ChatId, Sender, User, Action) ->
       <<"payload">> => #{<<"user">> => User},
       <<"type">> => <<"event">>,
       <<"action">> => Action}.
+
+-spec attachments_message(binary(), binary(), list(map())) -> map().
+attachments_message(ChatId, Sender, Attachments) ->
+    #{<<"chatId">> => ChatId,
+      <<"sender">> => Sender,
+      <<"payload">> => Attachments,
+      <<"type">> => <<"message">>,
+      <<"action">> => <<"attachments">>}.
+
+save_file([]) ->
+    ok;
+save_file([{file, TmpFile, Mime, Filename}|T]) ->
+    logger:debug("saving file: ~p, Mime: ~p", [Filename, Mime]),
+    file:write_file(Filename, TmpFile),
+    save_file(T).
+
+multipart(Req0) ->
+    case cowboy_req:read_part(Req0) of
+        {ok, Headers, Req1} ->
+            case cow_multipart:form_data(Headers) of
+                {data, FieldName} ->
+                    logger:debug("FieldName: ~p", [FieldName]),
+                    {ok, Body, Req2} = cowboy_req:read_part_body(Req1),
+                    [{FieldName, Body}| multipart(Req2)];
+                {file, FieldName, Filename, CType} ->
+                    logger:debug("FieldName: ~p FileName: ~p CType: ~p", [FieldName, Filename, CType]),
+                    {Req2, TmpFile} = stream_file(Req1, <<>>),
+                    Mime = <<"image/jpeg">>,
+                    [{file, TmpFile, Mime, Filename}|multipart(Req2)]
+            end;
+        {done, _} ->
+            []
+    end.
+
+stream_file(Req0, Body) ->
+    case cowboy_req:read_part_body(Req0) of
+        {ok, LastBodyChunk, Req} ->
+            {Req, <<Body/binary, LastBodyChunk/binary>>};
+        {more, BodyChunk, Req} ->
+            stream_file(Req, <<Body/binary, BodyChunk/binary>>)
+    end.

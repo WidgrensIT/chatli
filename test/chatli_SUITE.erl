@@ -174,6 +174,7 @@ all() ->
      create_same_chat_again,
      send_message,
      get_all_message,
+     upload_attachment,
      remove_participant,
      get_all_devices,
      get_callback].
@@ -284,6 +285,30 @@ get_callback(Config) ->
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts()),
     #{id := CallbackId} = decode(RespBody).
 
+upload_attachment(Config) ->
+    #{token := Token,
+      object := #{id := UserId}} =  proplists:get_value(user1, Config),
+    %% #{id := ChatId} = proplists:get_value(chat, Config),
+    #{id := DeviceId} = proplists:get_value(device, Config),
+    websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
+    Path = [?BASEPATH, <<"/client/message">>],
+    Cwd = file:get_cwd(),
+    ct:log("Path: ~p", [Cwd]),
+    {ok, Data} = file:read_file("/home/daniel/projects/chatli/test/itworks.jpg"),
+    Filename = filename:basename("/home/daniel/projects/chatli/test/itworks.jpg"),
+    Boundary = chatli_uuid:get_v4(),
+    Formatted = format_multipart_formdata(Data, [], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary),
+    ct:log("Formatted: ~p", [Formatted]),
+    #{status := {201, _}, body := MessageBody} = shttpc:post(Path, Formatted, opts(attachment, Token, Boundary)),
+    #{id := MessageId} = decode(MessageBody),
+    receive
+        {gun_ws, _ConnPid, _StreamRef0, {text, Msg}} ->
+            io:format("~p", [Msg]),
+            #{id := MessageId} = decode(Msg)
+    after 8000 ->
+        exit(timeout)
+    end.
+
 opts() ->
     opts(undefined).
 opts(undefined) ->
@@ -291,6 +316,14 @@ opts(undefined) ->
 opts(Token) ->
     ct:log("Token is: ~p", [Token]),
     Res = #{headers => #{'Content-Type' => <<"application/json">>,
+                         'Authorization' => <<"Bearer ", Token/binary>>},
+            close => true},
+    ct:log("Returning opts: ~p", [Res]),
+    Res.
+
+opts(attachment, Token, Boundary) ->
+    ct:log("Token is: ~p", [Token]),
+    Res = #{headers => #{'Content-Type' => <<"multipart/form-data; boundary=", Boundary/binary>>,
                          'Authorization' => <<"Bearer ", Token/binary>>},
             close => true},
     ct:log("Returning opts: ~p", [Res]),
@@ -323,3 +356,33 @@ websocket(Path, _Token) ->
     after 2000 ->
             exit(timeout)
     end.
+
+-spec format_multipart_formdata(Data, Params, Name, FileNames, MimeType, Boundary) -> binary() when
+    Data:: binary(),
+    Params:: list(),
+    Name:: binary(),
+    FileNames:: list(),
+    MimeType:: binary(),
+    Boundary:: binary().
+format_multipart_formdata(Data, Params, Name, FileNames, MimeType, Boundary) ->
+    StartBoundary = erlang:iolist_to_binary([<<"--">>, Boundary]),
+    LineSeparator = <<"\r\n">>,
+    WithParams = lists:foldl(fun({Key, Value}, Acc) -> 
+        erlang:iolist_to_binary([
+            Acc,
+            StartBoundary, LineSeparator,
+            <<"Content-Disposition: form-data; name=\"">>, Key, <<"\"">>, LineSeparator, LineSeparator,
+            Value, LineSeparator
+        ])
+    end, <<"">>, Params),
+    WithPaths = lists:foldl(fun(FileName, Acc) -> 
+        erlang:iolist_to_binary([
+            Acc,
+            StartBoundary, LineSeparator,
+            <<"Content-Disposition: form-data; name=\"">>, Name, <<"\"; filename=\"">>, FileName, <<"\"">>, LineSeparator,
+            <<"Content-Type: ">>, MimeType, LineSeparator, LineSeparator,
+            Data,
+            LineSeparator
+        ])
+    end, WithParams, FileNames),
+    erlang:iolist_to_binary([WithPaths, StartBoundary, <<"--">>, LineSeparator]).
