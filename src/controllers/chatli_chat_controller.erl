@@ -25,15 +25,22 @@ message(#{req := #{method := <<"POST">>},
             {status, 400}
     end;
 message(#{req := #{method := <<"POST">>} = Req,
-          auth_data := #{id := _UserId}}) ->
+          auth_data := #{id := Sender}}) ->
     Id = chatli_uuid:get_v4(),
     case multipart(Req) of
         [] ->
             logger:debug("Empty form data"),
             {status, 200};
         FormData ->
-            ok = save_file(FormData),
-            {json, 201, #{}, #{id => Id}}
+            FileList = save_file(FormData, []),
+            Attachments = build_attachment(FileList, []),
+            ChatId = proplists:get_value(<<"chat_id">>, FormData),
+            Message = attachments_message(Id, ChatId, Sender, Attachments),
+            try json:encode(Message, [binary, maps]) of
+                Json -> ok = chatli_ws_srv:publish(ChatId, Json),
+                    {json, 201, #{}, #{id => Id}}
+            catch _:_ -> {status, 500}
+            end
     end.
 
 get_archive(#{req := #{method := <<"GET">>,
@@ -110,7 +117,8 @@ participants(#{ req := #{method := <<"POST">>,
     case chatli_db:add_participant(ChatId, UserId) of
         ok ->
             {ok, User} = chatli_user_db:get(UserId),
-            Message = event_message(ChatId, Sender, User, <<"join">>),
+            Id = chatli_uuid:get_v4(),
+            Message = event_message(Id, ChatId, Sender, User, <<"join">>),
             chatli_ws_srv:publish(ChatId, Message),
             {status, 201};
         Error ->
@@ -124,7 +132,8 @@ manage_participants(#{req := #{ method := <<"DELETE">>,
                       auth_data := #{id := Sender}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {ok, User} = chatli_user_db:get(ParticipantId),
-    Message = event_message(ChatId, Sender, User, <<"leave">>),
+    Id = chatli_uuid:get_v4(),
+    Message = event_message(Id, ChatId, Sender, User, <<"leave">>),
     try json:encode(Message, [binary, maps]) of
         Json -> ok = chatli_ws_srv:publish(ChatId, Json),
                 {status, 200}
@@ -148,28 +157,47 @@ create_chat(Object, UserId, Participants, Id) ->
             {status, 500}
     end.
 
--spec event_message(binary(), binary(), map(), binary()) -> map().
-event_message(ChatId, Sender, User, Action) ->
-    #{<<"chatId">> => ChatId,
+build_attachment([], Acc) ->
+    Acc;
+build_attachment([{ok, AttachmentId, Mime}|T], Acc) ->
+    Attachment = #{url => <<"v1/attachments/", AttachmentId/binary>>,
+                   mime => Mime},
+    build_attachment(T, [Attachment|Acc]).
+
+-spec event_message(binary(), binary(), binary(), map(), binary()) -> map().
+event_message(Id, ChatId, Sender, User, Action) ->
+    #{<<"id">> => Id,
+      <<"chatId">> => ChatId,
       <<"sender">> => Sender,
       <<"payload">> => #{<<"user">> => User},
       <<"type">> => <<"event">>,
-      <<"action">> => Action}.
+      <<"action">> => Action,
+      <<"timestamp">> => os:system_time(millisecond)}.
 
--spec attachments_message(binary(), binary(), list(map())) -> map().
-attachments_message(ChatId, Sender, Attachments) ->
-    #{<<"chatId">> => ChatId,
+-spec attachments_message(binary(), binary(), binary(), list(map())) -> map().
+attachments_message(Id, ChatId, Sender, Attachments) ->
+    #{<<"id">> => Id,
+      <<"chatId">> => ChatId,
       <<"sender">> => Sender,
       <<"payload">> => Attachments,
       <<"type">> => <<"message">>,
-      <<"action">> => <<"attachments">>}.
+      <<"action">> => <<"attachments">>,
+      <<"timestamp">> => os:system_time(millisecond)}.
 
-save_file([]) ->
-    ok;
-save_file([{file, TmpFile, Mime, Filename}|T]) ->
-    logger:debug("saving file: ~p, Mime: ~p", [Filename, Mime]),
-    file:write_file(Filename, TmpFile),
-    save_file(T).
+save_file([], Acc) ->
+    Acc;
+save_file([{file, Bytes, Mime}|T], Acc) ->
+    UUID = chatli_uuid:get_v4(),
+    {ok, Path} = application:get_env(chatli, download_path),
+    logger:debug("path: ~p", [Path]),
+    case file:write(Path ++ binary_to_list(UUID), Bytes) of
+        ok ->
+            save_file(T, [{ok, UUID, Mime}|Acc]);
+        Error ->
+            save_file(T, [Error|Acc])
+    end;
+save_file([_|T], Acc) ->
+    save_file(T, Acc).
 
 multipart(Req0) ->
     case cowboy_req:read_part(Req0) of
@@ -183,7 +211,7 @@ multipart(Req0) ->
                     logger:debug("FieldName: ~p FileName: ~p CType: ~p", [FieldName, Filename, CType]),
                     {Req2, TmpFile} = stream_file(Req1, <<>>),
                     Mime = <<"image/jpeg">>,
-                    [{file, TmpFile, Mime, Filename}|multipart(Req2)]
+                    [{file, TmpFile, Mime}|multipart(Req2)]
             end;
         {done, _} ->
             []

@@ -288,16 +288,16 @@ get_callback(Config) ->
 upload_attachment(Config) ->
     #{token := Token,
       object := #{id := UserId}} =  proplists:get_value(user1, Config),
-    %% #{id := ChatId} = proplists:get_value(chat, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
     #{id := DeviceId} = proplists:get_value(device, Config),
     websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
     Path = [?BASEPATH, <<"/client/message">>],
     Cwd = file:get_cwd(),
     ct:log("Path: ~p", [Cwd]),
-    {ok, Data} = file:read_file("/home/daniel/projects/chatli/test/itworks.jpg"),
-    Filename = filename:basename("/home/daniel/projects/chatli/test/itworks.jpg"),
+    {ok, Data} = file:read_file("/mnt/d/projects/chatli/test/itworks.jpg"),
+    Filename = filename:basename("/mnt/d/projects/chatli/test/itworks.jpg"),
     Boundary = chatli_uuid:get_v4(),
-    Formatted = format_multipart_formdata(Data, [], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary),
+    Formatted = format_multipart_formdata(Data, [{<<"chat_id">>, ChatId}], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary),
     ct:log("Formatted: ~p", [Formatted]),
     #{status := {201, _}, body := MessageBody} = shttpc:post(Path, Formatted, opts(attachment, Token, Boundary)),
     #{id := MessageId} = decode(MessageBody),
@@ -367,7 +367,7 @@ websocket(Path, _Token) ->
 format_multipart_formdata(Data, Params, Name, FileNames, MimeType, Boundary) ->
     StartBoundary = erlang:iolist_to_binary([<<"--">>, Boundary]),
     LineSeparator = <<"\r\n">>,
-    WithParams = lists:foldl(fun({Key, Value}, Acc) -> 
+    WithParams = lists:foldl(fun({Key, Value}, Acc) ->
         erlang:iolist_to_binary([
             Acc,
             StartBoundary, LineSeparator,
@@ -375,7 +375,7 @@ format_multipart_formdata(Data, Params, Name, FileNames, MimeType, Boundary) ->
             Value, LineSeparator
         ])
     end, <<"">>, Params),
-    WithPaths = lists:foldl(fun(FileName, Acc) -> 
+    WithPaths = lists:foldl(fun(FileName, Acc) ->
         erlang:iolist_to_binary([
             Acc,
             StartBoundary, LineSeparator,

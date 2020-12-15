@@ -31,12 +31,22 @@ CREATE TABLE participant
     user_id uuid
 );
 
+CREATE TABLE callback
+(
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    url VARCHAR NOT NULL
+);
+
+
 CREATE TABLE device
 (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL,
     name VARCHAR
 );
+
+
 
 CREATE TYPE push_type AS ENUM
 ('fcm', 'apns.alert', 'apns.voip');
@@ -50,9 +60,3 @@ CREATE TABLE push_token
     PRIMARY KEY(device_id, type)
 );
 
-CREATE TABLE callback
-(
-    id UUID PRIMARY KEY,
-    user_id UUID NOT NULL,
-    url VARCHAR NOT NULL
-);
