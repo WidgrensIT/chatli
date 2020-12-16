@@ -195,7 +195,7 @@ create_chat(Object, UserId, Participants, Id) ->
     end.
 
 build_attachment({ok, AttachmentId, Mime, _}, ChatId) ->
-    #{<<"url">> => <<"client/chat/", ChatId/binary, "/attachment/", AttachmentId/binary>>,
+    #{<<"url">> => <<"chat/", ChatId/binary, "/attachment/", AttachmentId/binary>>,
       <<"mime">> => Mime}.
 
 -spec event_message(binary(), binary(), binary(), map(), binary()) -> map().
