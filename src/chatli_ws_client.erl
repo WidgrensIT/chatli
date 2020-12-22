@@ -16,6 +16,7 @@ websocket_init(State) ->
     #{user := User,
         device := Device} = State,
     ok = chatli_ws_srv:online(User, Device, self()),
+    self() ! ping,
     {ok, State}.
 
 websocket_handle(ping, State) ->
@@ -25,6 +26,8 @@ websocket_handle(Unexpected, State) ->
     logger:warning("UNEXPECTED: ~p State: ~p", [Unexpected, State]),
     {ok, State}.
 
+websocket_info(ping, State) ->
+    {reply, ping, State};
 websocket_info(Payload, State) ->
     logger:info("Sending payload: ~p State: ~p", [Payload, State]),
     {reply, {text, Payload}, State}.

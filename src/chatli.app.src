@@ -12,7 +12,8 @@
     nova,
     pgo,
     jwerl,
-    runtime_tools
+    runtime_tools,
+    mimetypes
    ]},
   {env,[]},
   {modules, []},

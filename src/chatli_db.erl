@@ -16,25 +16,29 @@
          get_callback/1,
          get_user_callbacks/1,
          delete_callback/1,
+         create_attachment/4,
+         get_attachment/2,
          query/2,
          query1/2]).
 
 
 
 create_message(#{<<"id">> := Id,
-                 <<"chatId">> := ChatId,
+                 <<"chat_id">> := ChatId,
                  <<"payload">> := Payload,
                  <<"sender">> := UserId,
-                 <<"timestamp">> := Timestamp}) ->
-    SQL = <<"INSERT INTO message (id, chat_id, payload, sender, timestamp) VALUES ($1, $2, $3, $4, $5)">>,
-    query1(SQL, [Id, ChatId, Payload, UserId, Timestamp]).
+                 <<"timestamp">> := Timestamp,
+                 <<"type">> := Type,
+                 <<"action">> := Action}) ->
+    SQL = <<"INSERT INTO message (id, chat_id, payload, sender, timestamp, type, action) VALUES ($1, $2, $3, $4, $5, $6, $7)">>,
+    query1(SQL, [Id, ChatId, Payload, UserId, Timestamp, Type, Action]).
 
 get_message(ChatId, MessageId) ->
     SQL = <<"SELECT id,
                     chat_id,
                     payload,
                     sender,
-                    DATE_PART('epoch', timestamp)
+                    timestamp
             FROM message
             WHERE chat_id = $1 AND id = $2">>,
     query1(SQL, [ChatId, MessageId]).
@@ -44,9 +48,10 @@ get_chat_messages(ChatId) ->
                     chat_id,
                     payload,
                     sender,
-                    DATE_PART('epoch', timestamp)
+                    timestamp
             FROM message
-            WHERE chat_id = $1">>,
+            WHERE chat_id = $1
+            ORDER BY timestamp ASC">>,
     query(SQL, [ChatId]).
 
 create_chat(#{<<"id">> := Id,
@@ -129,6 +134,14 @@ get_user_callbacks(UserId) ->
 delete_callback(CallbackId) ->
     SQL = <<"DELETE FROM callback WHERE id = $1">>,
     query1(SQL, [CallbackId]).
+
+create_attachment(AttachmentId, ChatId, Mime, ByteSize) ->
+    SQL = <<"INSERT INTO attachment (id, chat_id, mime, length) VALUES ($1, $2, $3, $4)">>,
+    query1(SQL, [AttachmentId, ChatId, Mime, ByteSize]).
+
+get_attachment(AttachmentId, ChatId) ->
+    SQL = <<"SELECT * FROM attachment WHERE id = $1 AND chat_id = $2">>,
+    query1(SQL, [AttachmentId, ChatId]).
 
 % Expect 1 result
 query1(SQL, Values) ->

@@ -4,7 +4,8 @@
             {"/signup", { chatli_user_controller, signup}, #{methods => [post]}},
             {"/login", { chatli_user_controller, login}, #{methods => [post]}},
             {"/callback", { chatli_callback_controller, create_callback}, #{method => [post]}},
-            {"/callback/:callbackid", { chatli_callback_controller, manage_callback}, #{method => [get, delete]}}
+            {"/callback/:callbackid", { chatli_callback_controller, manage_callback}, #{method => [get, delete]}},
+            {"/chat/:chatid/attachment/:attachmentid", { chatli_chat_controller, get_attachment_no_auth}, #{method => [get]}}
            ],
  statics => [
              {"/assets/[...]", "assets"}
@@ -19,6 +20,7 @@
             {"/message", {chatli_chat_controller, message}, #{methods => [post]}},
             {"/chat", {chatli_chat_controller, chat}, #{methods => [get, post]}},
             {"/chat/:chatid", {chatli_chat_controller, manage_chat}, #{methods => [get, delete]}},
+            {"/chat/:chatid/attachment/:attachmentid", {chatli_chat_controller, get_attachment}, #{methods => [get]}},
             {"/chat/:chatid/message", {chatli_chat_controller, get_archive}, #{methods => [get]}},
             {"/chat/:chatid/message/:messageid", {chatli_chat_controller, manage_message}, #{methods => [get, delete]}},
             {"/chat/:chatid/participant", {chatli_chat_controller, participants}, #{methods => [get, post]}},
