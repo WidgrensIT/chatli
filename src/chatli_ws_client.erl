@@ -4,7 +4,8 @@
          websocket_init/1,
          websocket_handle/2,
          websocket_info/2,
-         terminate/3]).
+         terminate/3,
+         ping_loop/1]).
 
 init(#{req := #{bindings := #{deviceid := Device,
                               userid := User}}}) ->
@@ -16,11 +17,12 @@ websocket_init(State) ->
     #{user := User,
         device := Device} = State,
     ok = chatli_ws_srv:online(User, Device, self()),
-    self() ! ping,
+    Self = self(),
+    spawn(fun() -> ping_loop(Self) end),
     {ok, State}.
 
-websocket_handle(ping, State) ->
-    logger:info("Ping from client ~p", [State]),
+websocket_handle(pong, State) ->
+    logger:info("Pong from client ~p", [State]),
     {ok, State};
 websocket_handle(Unexpected, State) ->
     logger:warning("UNEXPECTED: ~p State: ~p", [Unexpected, State]),
@@ -37,3 +39,13 @@ terminate(_, _, State)->
     #{user := User,
         device := Device} = State,
     ok = chatli_ws_srv:offline(User, Device, self()).
+
+
+ping_loop(Receiver) ->
+    Receiver ! ping,
+    receive
+        stop ->
+            ok
+    after 5000 ->
+            ping_loop(Receiver)
+    end.
