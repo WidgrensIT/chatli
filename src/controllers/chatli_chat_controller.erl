@@ -67,10 +67,12 @@ chat(#{req := #{method := <<"POST">>},
     end.
 
 manage_chat(#{req := #{ method := <<"GET">>,
-                        bindings := #{chatid := ChatId}}}) ->
+                        bindings := #{chatid := ChatId}},
+              auth_data := #{id := UserId}}) ->
     case chatli_db:get_chat(ChatId) of
         {ok, Chat} ->
-            {json, 201, #{}, Chat};
+            [Chat2|_] = get_participants([Chat], UserId, []),
+            {json, 201, #{}, Chat2};
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {status, 500}
