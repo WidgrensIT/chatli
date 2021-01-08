@@ -112,7 +112,8 @@ send_callback([Message | T], UserId) ->
         error ->
             send_callback(T, UserId);
         Json ->
-            ok = chatli_ws_srv:callback(UserId, Json)
+            ok = chatli_ws_srv:callback(UserId, Json),
+            send_callback(T, UserId)
     end.
 
 encode(Message) ->
