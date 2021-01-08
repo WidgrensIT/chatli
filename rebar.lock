@@ -15,7 +15,7 @@
   0},
  {<<"nova">>,
   {git,"https://github.com/novaframework/nova.git",
-       {ref,"6b411a4e45e94a698fe18e24b20d5532fe7288b0"}},
+       {ref,"926e7ab76e7591e04d092dcece572d5b1ec93203"}},
   0},
  {<<"pg_types">>,
   {git,"https://github.com/tsloughter/pg_types.git",

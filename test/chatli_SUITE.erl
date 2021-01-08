@@ -72,7 +72,8 @@ init_per_suite(_Config) ->
                token => Token2}},
      {chat, decode(ChatRespBody)},
      {device, maps:merge(#{id => DeviceId}, Device)},
-     {callback,  decode(CallbackRespBody)}
+     {callback,  decode(CallbackRespBody)},
+     {timestamp, os:system_time(millisecond)}
      ].
 
 %%--------------------------------------------------------------------
@@ -174,6 +175,8 @@ all() ->
      create_same_chat_again,
      send_message,
      get_all_message,
+     get_filtered_message,
+     get_historic_message,
      upload_attachment,
      remove_participant,
      get_all_devices,
@@ -268,6 +271,27 @@ get_all_message(Config) ->
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
     #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
     #{id := MessageId} = MessageObj = decode(MessageRespBody).
+
+get_filtered_message(Config) ->
+    #{token := Token} =  proplists:get_value(user1, Config),
+    #{id := ChatId} = proplists:get_value(chat, Config),
+    StartTimestamp = integer_to_binary(proplists:get_value(timestamp, Config)),
+    Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message?after=">>, StartTimestamp],
+    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    [#{id := MessageId}] = [MessageObj] = decode(RespBody),
+    MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
+    #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
+    #{id := MessageId} = MessageObj = decode(MessageRespBody),
+    Path2 = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message?before=">>, StartTimestamp],
+    #{status := {200, _}, body := RespBody2} = shttpc:get(Path2, opts(Token)),
+    [] = decode(RespBody2).
+
+get_historic_message(Config) ->
+    Path = [?BASEPATH, <<"/v1/history">>],
+    Body = encode(#{type => <<"email">>,
+                    value => <<"my@email.com">>,
+                    timestamp => proplists:get_value(timestamp, Config)}),
+    #{status := {200, _}} = shttpc:post(Path, Body, opts()).
 
 get_all_devices(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
