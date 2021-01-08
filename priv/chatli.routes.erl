@@ -5,6 +5,7 @@
             {"/login", { chatli_user_controller, login}, #{methods => [post]}},
             {"/callback", { chatli_callback_controller, create_callback}, #{method => [post]}},
             {"/callback/:callbackid", { chatli_callback_controller, manage_callback}, #{method => [get, delete]}},
+            {"/history", {chatli_chat_controller, get_history}, #{method => [post]}},
             {"/chat/:chatid/attachment/:attachmentid", { chatli_chat_controller, get_attachment_no_auth}, #{method => [get]}}
            ],
  statics => [

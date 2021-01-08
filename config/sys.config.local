@@ -25,7 +25,9 @@
          {plugins, [
                     {pre_http_request, nova_security_plugin, #{}, 2},
                     {pre_http_request, nova_cors_plugin, #{}, 0},
-                    {pre_http_request, nova_request_plugin, #{decode_json_body => true, parse_bindings => true}, 10}
+                    {pre_http_request, nova_request_plugin, #{decode_json_body => true,
+                                                              parse_bindings => true,
+                                                              parse_qs => true}, 10}
                    ]}
         ]},
   {chatli, [{download_path, "./priv/attachments/"}]}

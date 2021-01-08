@@ -5,6 +5,7 @@
 %% API
 -export([start_link/0,
          publish/2,
+         callback/2,
          online/3,
          offline/3]).
 
@@ -39,6 +40,9 @@ start_link() ->
 
 publish(Topic, Body) ->
     gen_server:cast(?MODULE, {publish, Topic, Body}).
+
+callback(UserId, Body) ->
+    gen_server:cast(?MODULE, {callback, UserId, Body}).
 
 online(User, Device, Socket) ->
     gen_server:call(?MODULE, {online, User, Device, Socket}).

@@ -6,6 +6,7 @@
          create_chat/1,
          get_chat/1,
          get_all_chats/1,
+         get_filtered_messages/2,
          get_dm_chat/2,
          delete_chat/1,
          add_participant/2,
@@ -53,6 +54,18 @@ get_chat_messages(ChatId) ->
             WHERE chat_id = $1
             ORDER BY timestamp ASC">>,
     query(SQL, [ChatId]).
+
+get_filtered_messages(ChatId, QS) ->
+    {Values, SqlWHERE} = qs_to_sql(QS, {[ChatId], [<<" WHERE chat_id=$1">>]}, 2),
+    SQL = <<"SELECT id,
+                    chat_id,
+                    payload,
+                    sender,
+                    timestamp
+            FROM message",
+            SqlWHERE/binary,
+            "ORDER BY timestamp ASC">>,
+    query(SQL, Values).
 
 create_chat(#{<<"id">> := Id,
               <<"name">> := Name,
@@ -176,3 +189,14 @@ query(SQL, Values) ->
             logger:error("Error: ~p on SQL ~p Values ~p", [Error, SQL, Values]),
             {error, Error}
     end.
+
+qs_to_sql([], {Values, SQL}, _) ->
+  {Values, bstring:join(SQL, <<" AND ">>)};
+qs_to_sql([{<<"after">>, Value}|T], {List, Binary}, N) ->
+    Nbin = integer_to_binary(N),
+    qs_to_sql(T, {List ++ [binary_to_integer(Value)], Binary ++ [<<"timestamp >= ", "$", Nbin/binary>>]}, N+1);
+qs_to_sql([{<<"before">>, Value}|T], {List, Binary}, N) ->
+    Nbin = integer_to_binary(N),
+    qs_to_sql(T, {List ++ [binary_to_integer(Value)], Binary ++ [<<"timestamp <= ", "$", Nbin/binary>>]}, N+1);
+qs_to_sql([_|T], Acc, N) ->
+    qs_to_sql(T, Acc, N).

@@ -8,7 +8,8 @@
          participants/1,
          manage_participants/1,
          get_attachment/1,
-         get_attachment_no_auth/1
+         get_attachment_no_auth/1,
+         get_history/1
         ]).
 
 message(#{req := #{method := <<"POST">>},
@@ -80,9 +81,56 @@ get_attachment_no_auth(#{req := #{method := <<"GET">>,
             {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
     end.
 
-get_archive(#{req := #{method := <<"GET">>,
-                       bindings := #{chatid := ChatId}}}) ->
+get_history(#{req := #{method := <<"POST">>},
+              json := #{<<"type">> := Type,
+                        <<"value">> := Value,
+                        <<"timestamp">> := Timestamp}}) ->
+    case chatli_user_db:find(Type, Value) of
+        undefined ->
+            {status, 200};
+        {ok, #{id := UserId}} ->
+            {ok, Result} = chatli_db:get_all_chats(UserId),
+            MessageList = get_chat_messages(Result, Timestamp, []),
+            send_callback(MessageList, UserId),
+            {status, 200}
+    end.
+
+get_chat_messages([], _ , Acc) ->
+    Acc;
+get_chat_messages([#{id := ChatId} | T], Timestamp, Acc) ->
+    case chatli_db:get_filtered_messages(ChatId, [{<<"after">>, integer_to_binary(Timestamp)}]) of
+        {ok, Messages} ->
+            get_chat_messages(T, Timestamp, Messages ++ Acc);
+        _ ->
+            get_chat_messages(T, Timestamp, Acc)
+    end.
+
+send_callback([], _) ->
+    ok;
+send_callback([Message | T], UserId) ->
+    case encode(Message) of
+        error ->
+            send_callback(T, UserId);
+        Json ->
+            ok = chatli_ws_srv:callback(UserId, Json),
+            send_callback(T, UserId)
+    end.
+
+encode(Message) ->
+    try json:encode(Message, [binary, maps]) of
+        Json -> Json
+    catch _:_ -> error
+    end.
+
+get_archive(#{req := #{method := <<"GET">>},
+              bindings := #{chatid := ChatId},
+              qs := []}) ->
     {ok, Result} = chatli_db:get_chat_messages(ChatId),
+    {json, 200, #{}, Result};
+get_archive(#{req := #{method := <<"GET">>},
+              bindings := #{chatid := ChatId},
+              qs := QS}) ->
+    {ok, Result} = chatli_db:get_filtered_messages(ChatId, QS),
     {json, 200, #{}, Result}.
 
 manage_message(#{req := #{method := <<"GET">>,
