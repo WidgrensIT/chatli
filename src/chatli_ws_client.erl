@@ -22,7 +22,6 @@ websocket_init(State) ->
     {ok, State}.
 
 websocket_handle(pong, State) ->
-    logger:info("Pong from client ~p", [State]),
     {ok, State};
 websocket_handle(Unexpected, State) ->
     logger:warning("UNEXPECTED: ~p State: ~p", [Unexpected, State]),

@@ -17,8 +17,11 @@ message(#{req := #{method := <<"POST">>},
           json := Json}) ->
     Id = chatli_uuid:get_v4(),
     #{<<"chat_id">> := ChatId} = Json,
+    {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(UserId),
     Object = maps:merge(#{<<"id">> => Id,
                           <<"sender">> => UserId,
+                          <<"sender_info">> => #{<<"phone_number">> => PhoneNumber,
+                                                 <<"email">> => Email},
                           <<"timestamp">> => os:system_time(millisecond),
                           <<"type">> => <<"message">>,
                           <<"action">> => <<"message">>}, Json),
@@ -38,8 +41,13 @@ message(#{req := #{method := <<"POST">>} = Req,
             {status, 200};
         FormData ->
             ChatId = proplists:get_value(<<"chat_id">>, FormData),
-            [File] = save_file(FormData, [], ChatId),
-            Attachments = build_attachment(File, ChatId),
+            File2 = case save_file(FormData, [], ChatId) of
+                         [] ->
+                            [];
+                        [File] -> File
+                    end,
+
+            Attachments = build_attachment(File2, ChatId),
             Message = attachments_message(Id, ChatId, Sender, Attachments),
             case chatli_db:create_message(Message) of
                 ok ->
@@ -244,7 +252,10 @@ create_chat(Object, UserId, Participants, Id) ->
             {status, 500}
     end.
 
-build_attachment({ok, AttachmentId, Mime, _}, ChatId) ->
+build_attachment([], _) ->
+    #{};
+build_attachment({ok, AttachmentId, Mime, WhatIs}, ChatId) ->
+    logger:warning("what is? ~p", [WhatIs]),
     #{<<"url">> => <<"chat/", ChatId/binary, "/attachment/", AttachmentId/binary>>,
       <<"mime">> => Mime}.
 
@@ -258,11 +269,14 @@ event_message(Id, ChatId, Sender, User, Action) ->
       <<"action">> => Action,
       <<"timestamp">> => os:system_time(millisecond)}.
 
--spec attachments_message(binary(), binary(), binary(), list(map())) -> map().
+-spec attachments_message(binary(), binary(), binary(), map()) -> map().
 attachments_message(Id, ChatId, Sender, Attachments) ->
+    {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(Sender),
     #{<<"id">> => Id,
       <<"chat_id">> => ChatId,
       <<"sender">> => Sender,
+      <<"sender_info">> => #{<<"phone_number">> => PhoneNumber,
+                             <<"email">> => Email},
       <<"payload">> => Attachments,
       <<"type">> => <<"message">>,
       <<"action">> => <<"attachments">>,

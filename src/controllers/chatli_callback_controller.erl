@@ -11,9 +11,14 @@ create_callback(#{req := #{method := <<"POST">>},
     case chatli_user_db:find(Type, Value) of
         undefined ->
             {status, 404};
-        {ok, #{id := UserId}} ->
+        {ok, #{id := UserId} = User} ->
+            Obj = #{<<"id">> => Id,
+                    <<"user_id">> => UserId,
+                    <<"username">> => maps:get(username, User, null),
+                    <<"phone_number">> => maps:get(phone_number, User, null),
+                    <<"email">> => maps:get(email, User, null)},
             ok = chatli_db:create_callback(Id, UserId, Url),
-            {json, 200, #{}, #{id => Id}}
+            {json, 200, #{}, Obj}
     end.
 
 manage_callback(#{req := #{method := <<"GET">>,

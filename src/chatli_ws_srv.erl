@@ -107,7 +107,10 @@ handle_call({offline, User, Device, Socket}, _, State) ->
 handle_cast({callback, UserId, Body}, State) ->
     logger:debug("Got callback cast"),
     {ok, Callbacks} = chatli_db:get_user_callbacks(UserId),
-    [send_callback(Url, Body) || #{url := Url} <- Callbacks],
+    DecodedBody = json:decode(Body, [maps]),
+    MergedBody = maps:merge(#{<<"to">> => UserId}, DecodedBody),
+    Body2 = json:encode(MergedBody, [maps, binary]),
+    [send_callback(Url, Body2) || #{url := Url} <- Callbacks],
     {noreply, State};
 handle_cast({publish, Topic, Body}, State) ->
     {ok, Subscribers} = chatli_db:get_participants(Topic),
