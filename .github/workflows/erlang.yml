@@ -39,6 +39,6 @@ jobs:
       with:
         context: .
         push: true
-        tags: user/app:latest
+        tags: ghrc.io/user/app:latest
     - name: Image digest
       run: echo ${{ steps.docker_build.outputs.digest }}
