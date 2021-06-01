@@ -39,6 +39,6 @@ jobs:
       with:
         context: .
         push: true
-        tags: ghrc.io/WidgrensIT/chatli:latest
+        tags: ghrc.io/widgrensit/chatli:latest
     - name: Image digest
       run: echo ${{ steps.docker_build.outputs.digest }}
