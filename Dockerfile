@@ -15,8 +15,8 @@ FROM alpine
 
 # Install some libs
 RUN apk add --no-cache openssl && \
-    apk add --no-cache ncurses-libs \
-    apk add --no-cache libstdc++ \
+    apk add --no-cache ncurses-libs  && \
+    apk add --no-cache libstdc++ && \
     apk add --no-cache libgcc
 
 # Install the released application
