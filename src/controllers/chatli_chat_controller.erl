@@ -132,7 +132,7 @@ encode(Message) ->
 
 get_archive(#{req := #{method := <<"GET">>},
               bindings := #{chatid := ChatId},
-              qs := []}) ->
+              qs := <<>>}) ->
     {ok, Result} = chatli_db:get_chat_messages(ChatId),
     {json, 200, #{}, Result};
 get_archive(#{req := #{method := <<"GET">>},
