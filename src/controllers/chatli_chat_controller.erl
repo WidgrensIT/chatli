@@ -130,15 +130,15 @@ encode(Message) ->
     catch _:_ -> error
     end.
 
-get_archive(#{req := #{method := <<"GET">>},
-              bindings := #{chatid := ChatId},
-              qs := <<>>}) ->
-    {ok, Result} = chatli_db:get_chat_messages(ChatId),
-    {json, 200, #{}, Result};
+
 get_archive(#{req := #{method := <<"GET">>},
               bindings := #{chatid := ChatId},
               qs := QS}) ->
     {ok, Result} = chatli_db:get_filtered_messages(ChatId, QS),
+    {json, 200, #{}, Result};
+get_archive(#{req := #{method := <<"GET">>},
+              bindings := #{chatid := ChatId}}) ->
+    {ok, Result} = chatli_db:get_chat_messages(ChatId),
     {json, 200, #{}, Result}.
 
 manage_message(#{req := #{method := <<"GET">>,
