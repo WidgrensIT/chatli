@@ -22,4 +22,6 @@ RUN apk add --no-cache openssl && \
 # Install the released application
 COPY --from=0 /buildroot/_build/default/rel/chatli /chatli
 
+RUN mkdir /chatli/priv/attachments
+
 CMD ["/chatli/bin/chatli", "foreground"]
