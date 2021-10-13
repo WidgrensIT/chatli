@@ -4,7 +4,7 @@
  {kernel, [
            {logger_level, debug}
           ]},
- {pgo, [{pools, [{default, #{pool_size => 10,
+ {pgo, [{pools, [{default, #{pool_size => 2,
                              host => "localhost",
                              port => 5555,
                              database => "chatli",
