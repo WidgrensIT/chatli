@@ -284,7 +284,7 @@ attachments_message(Id, ChatId, Sender, Attachments) ->
 
 save_file([], Acc, _) ->
     Acc;
-save_file([{file, Bytes, Mime, ByteSize}|T], Acc, ChatId) ->
+save_file([{file, Bytes, Mime, ByteSize}|T] = Filelist, Acc, ChatId) ->
     UUID = chatli_uuid:get_v4_no_dash(list),
     {ok, Path} = application:get_env(chatli, download_path),
     logger:debug("path: ~p", [Path]),
@@ -298,6 +298,10 @@ save_file([{file, Bytes, Mime, ByteSize}|T], Acc, ChatId) ->
                  _ ->
                     save_file([{error, create_attachment}|T], Acc, ChatId)
             end;
+        {error, enoent} ->
+            file:make_dir("./path"),
+            file:make_dir(Path),
+            save_file(T, Acc, ChatId);
         Error ->
             save_file(T, [Error|Acc], ChatId)
     end;
