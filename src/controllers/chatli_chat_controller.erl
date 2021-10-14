@@ -299,7 +299,7 @@ save_file([{file, Bytes, Mime, ByteSize}|T] = Filelist, Acc, ChatId) ->
                     save_file([{error, create_attachment}|T], Acc, ChatId)
             end;
         {error, enoent} ->
-            file:make_dir("./path"),
+            file:make_dir("./priv"),
             file:make_dir(Path),
             save_file(T, Acc, ChatId);
         Error ->
