@@ -23,5 +23,7 @@ RUN apk add --no-cache openssl && \
 COPY --from=0 /buildroot/_build/default/rel/chatli /chatli
 
 RUN mkdir -p /chatli/lib/chatli-0.1.0/priv/attachments
+RUN mkdir -p /chatli/priv/attachments
+
 
 CMD ["/chatli/bin/chatli", "foreground"]
