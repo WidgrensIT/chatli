@@ -3,7 +3,10 @@
          message/1,
          get_archive/1,
          manage_message/1,
-         chat/1,
+         get_chats/1,
+         get_chat/1,
+         delete_chat/1,
+         create_chat/1,
          manage_chat/1,
          participants/1,
          manage_participants/1,
@@ -147,8 +150,7 @@ manage_message(#{req := #{method := <<"GET">>,
     {ok, Message} = chatli_db:get_message(ChatId, MessageId),
     {json, 200, #{}, Message}.
 
-chat(#{req := #{method := <<"GET">>},
-       auth_data := #{id := UserId}}) ->
+get_chats(#{auth_data := #{id := UserId}}) ->
     case chatli_db:get_all_chats(UserId) of
         {ok, Chats} ->
             Chats2 = get_participants(Chats, UserId, []),
@@ -156,11 +158,11 @@ chat(#{req := #{method := <<"GET">>},
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {json, 200, #{}, []}
-    end;
-chat(#{req := #{method := <<"POST">>},
-       json := #{<<"participants">> := Participants,
-                 <<"type">> := Type} = Json,
-       auth_data := #{id := UserId}}) ->
+    end.
+
+create_chat(#{json := #{<<"participants">> := Participants,
+                        <<"type">> := Type} = Json,
+              auth_data := #{id := UserId}}) ->
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     Object = maps:merge(#{<<"id">> => Id}, Json),
     case Type of
@@ -177,9 +179,8 @@ chat(#{req := #{method := <<"POST">>},
             create_chat(Object, UserId, Participants, Id)
     end.
 
-manage_chat(#{req := #{ method := <<"GET">>,
-                        bindings := #{chatid := ChatId}},
-              auth_data := #{id := UserId}}) ->
+get_chat(#{bindings := #{<<"chatid">> := ChatId},
+           auth_data := #{id := UserId}}) ->
     case chatli_db:get_chat(ChatId) of
         {ok, Chat} ->
             [Chat2|_] = get_participants([Chat], UserId, []),
@@ -187,9 +188,9 @@ manage_chat(#{req := #{ method := <<"GET">>,
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {status, 500}
-    end;
-manage_chat(#{req := #{ method := <<"DELETE">>,
-                        bindings := #{chatid := ChatId}}}) ->
+    end.
+
+delete_chat(#{bindings := #{<<"chatid">> := ChatId}}) ->
     chatli_db:delete_chat(ChatId),
     {status, 200}.
 
