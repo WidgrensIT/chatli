@@ -195,7 +195,7 @@ get_all_users(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
     Path = [?BASEPATH, <<"/client/user">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
-    1 = length(decode(RespBody)).
+    4 = length(decode(RespBody)).
 
 add_participant(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
