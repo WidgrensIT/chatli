@@ -7,8 +7,8 @@
          terminate/3,
          ping_loop/1]).
 
-init(#{req := #{bindings := #{deviceid := Device,
-                              userid := User}}}) ->
+init(#{req := #{bindings := #{<<"deviceid">> := Device,
+                              <<"userid">> := User}}}) ->
      {ok, #{user => User,
             device => Device}}.
 

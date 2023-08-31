@@ -43,14 +43,14 @@ init_per_suite(_Config) ->
     LoginPath = [?BASEPATH, <<"/v1/login">>],
     #{status := {200, _}, body := LoginRespBody} = shttpc:post(LoginPath, encode(#{username => Username,
                                                                                    password => Password}), opts()),
-    #{access_token := Token} = decode(LoginRespBody),
+    #{<<"access_token">> := Token} = decode(LoginRespBody),
     [_ , Payload, _] = bstring:tokens(Token, <<".">>),
     UserObj1 = decode(base64:decode(Payload)),
     #{status := {200, _}, body := LoginRespBody2} = shttpc:post(LoginPath, encode(#{username => Username2,
                                                                                     password => Password2}), opts()),
-    #{access_token := Token2} = decode(LoginRespBody2),
+    #{<<"access_token">> := Token2} = decode(LoginRespBody2),
     [_ , Payload2, _] = bstring:tokens(Token2, <<".">>),
-    #{id := UserId2} = UserObj2 = decode(base64:decode(Payload2)),
+    #{<<"id">> := UserId2} = UserObj2 = decode(base64:decode(Payload2)),
     CallbackPath = [?BASEPATH, <<"/v1/callback">>],
     CallbackObject = #{type => <<"email">>,
                        value => <<"my@email.com">>,
@@ -62,7 +62,7 @@ init_per_suite(_Config) ->
              <<"participants">> => [#{<<"id">> => UserId2}]},
     ChatPath = [?BASEPATH, <<"/client/chat">>],
     #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
-    Device = #{name => <<"my device">>},
+    Device = #{<<"name">> => <<"my device">>},
     DeviceId = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     DevicePath = [?BASEPATH, <<"/client/device/">>, DeviceId],
     #{status := {200, _}} = shttpc:put(DevicePath, encode(Device), opts(Token)),
@@ -71,7 +71,7 @@ init_per_suite(_Config) ->
      {user2, #{object => UserObj2,
                token => Token2}},
      {chat, decode(ChatRespBody)},
-     {device, maps:merge(#{id => DeviceId}, Device)},
+     {device, maps:merge(#{<<"id">> => DeviceId}, Device)},
      {callback,  decode(CallbackRespBody)},
      {timestamp, os:system_time(millisecond)}
      ].
@@ -82,21 +82,21 @@ init_per_suite(_Config) ->
 %% @end
 %%--------------------------------------------------------------------
 end_per_suite(Config) ->
-    #{object := #{id := Id},
+    #{object := #{<<"id">> := Id},
       token := Token} = proplists:get_value(user1, Config),
-    #{object := #{id := Id2},
+    #{object := #{<<"id">> := Id2},
       token := Token2} = proplists:get_value(user2, Config),
     Path = [?BASEPATH, <<"/client/user/">>, Id],
     shttpc:delete(Path, opts(Token)),
     Path2 = [?BASEPATH, <<"/client/user/">>, Id2],
     shttpc:delete(Path2, opts(Token2)),
-    #{id := ChatId} = proplists:get_value(chat, Config),
+    #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     ChatPath = [?BASEPATH, <<"/client/chat/">>, ChatId],
     #{status := {200, _}} = shttpc:delete(ChatPath, opts(Token)),
-    #{id := DeviceId} = proplists:get_value(device, Config),
+    #{<<"id">> := DeviceId} = proplists:get_value(device, Config),
     DevicePath = [?BASEPATH, <<"/client/device/">>, DeviceId],
     #{status := {200, _}} = shttpc:delete(DevicePath, opts(Token)),
-    #{id := CallbackId} = proplists:get_value(callback, Config),
+    #{<<"id">> := CallbackId} = proplists:get_value(callback, Config),
     CallbackPath = [?BASEPATH, <<"/v1/callback/">>, CallbackId],
     #{status := {200, _}} = shttpc:delete(CallbackPath, opts()),
     ok.
@@ -206,82 +206,82 @@ add_participant(Config) ->
 
 list_participant(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
-    #{id := ChatId} = proplists:get_value(chat, Config),
+    #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
-    #{participants := Participants} = decode(RespBody),
+    #{<<"participants">> := Participants} = decode(RespBody),
     1 = length(Participants).
 
 get_all_chats(Config) ->
     #{token := Token} = proplists:get_value(user1, Config),
     Path = [?BASEPATH, <<"/client/chat/">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
-    [#{participants := Participants}] = decode(RespBody),
+    [#{<<"participants">> := Participants}] = decode(RespBody),
     1 = length(Participants).
 
 create_same_chat_again(Config) ->
-    #{id := ChatId} = proplists:get_value(chat, Config),
+    #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     #{token := Token} =  proplists:get_value(user1, Config),
-    #{object := #{id := UserId2}} =  proplists:get_value(user2, Config),
+    #{object := #{<<"id">> := UserId2}} =  proplists:get_value(user2, Config),
     Chat = #{<<"name">> => <<"my c hat">>,
              <<"description">> => <<"This is a c hat">>,
              <<"type">> => <<"1to1">>,
              <<"participants">> => [#{<<"id">> => UserId2}]},
     ChatPath = [?BASEPATH, <<"/client/chat">>],
     #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
-    #{id := ChatId} = decode(ChatRespBody).
+    #{<<"id">> := ChatId} = decode(ChatRespBody).
 
 remove_participant(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
-    #{object := #{id := UserId2}} = proplists:get_value(user2, Config),
-    #{id := ChatId} = proplists:get_value(chat, Config),
+    #{object := #{<<"id">> := UserId2}} = proplists:get_value(user2, Config),
+    #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant/">>, UserId2],
     #{status := {200, _}} = shttpc:delete(Path, opts(Token)),
     ListPath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(ListPath, opts(Token)),
-    #{participants := Participants} = decode(RespBody),
+    #{<<"participants">> := Participants} = decode(RespBody),
     0 = length(Participants).
 
 send_message(Config) ->
     #{token := Token,
-      object := #{id := UserId}} =  proplists:get_value(user1, Config),
-    #{id := ChatId} = proplists:get_value(chat, Config),
-    #{id := DeviceId} = proplists:get_value(device, Config),
+      object := #{<<"id">> := UserId}} =  proplists:get_value(user1, Config),
+    #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
+    #{<<"id">> := DeviceId} = proplists:get_value(device, Config),
     websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
     Path = [?BASEPATH, <<"/client/message">>],
     #{status := {201, _}, body := MessageBody} = shttpc:post(Path,
                                                              encode(#{chat_id => ChatId,
                                                                       payload => <<"hi hi">>}),
                                                         opts(Token)),
-    #{id := MessageId} = decode(MessageBody),
+    #{<<"id">> := MessageId} = decode(MessageBody),
     receive
         {gun_ws, _ConnPid, _StreamRef0, {text, Msg}} ->
             io:format("~p", [Msg]),
-            #{id := MessageId} = decode(Msg)
+            #{<<"id">> := MessageId} = decode(Msg)
     after 8000 ->
         exit(timeout)
     end.
 
 get_all_message(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
-    #{id := ChatId} = proplists:get_value(chat, Config),
+    #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
-    [#{id := MessageId}] = [MessageObj] = decode(RespBody),
+    [#{<<"id">> := MessageId}] = [MessageObj] = decode(RespBody),
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
     #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
-    #{id := MessageId} = MessageObj = decode(MessageRespBody).
+    #{<<"id">> := MessageId} = MessageObj = decode(MessageRespBody).
 
 get_filtered_message(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
-    #{id := ChatId} = proplists:get_value(chat, Config),
+    #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     StartTimestamp = integer_to_binary(proplists:get_value(timestamp, Config)),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message?after=">>, StartTimestamp],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
-    [#{id := MessageId}] = [MessageObj] = decode(RespBody),
+    [#{<<"id">> := MessageId}] = [MessageObj] = decode(RespBody),
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
     #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
-    #{id := MessageId} = MessageObj = decode(MessageRespBody),
+    #{<<"id">> := MessageId} = MessageObj = decode(MessageRespBody),
     Path2 = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message?before=">>, StartTimestamp],
     #{status := {200, _}, body := RespBody2} = shttpc:get(Path2, opts(Token)),
     [] = decode(RespBody2).
@@ -295,25 +295,26 @@ get_historic_message(Config) ->
 
 get_all_devices(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
-    #{id := DeviceId} = DeviceObj = proplists:get_value(device, Config),
+    #{<<"id">> := DeviceId} = DeviceObj = proplists:get_value(device, Config),
     Path = [?BASEPATH, <<"/client/device">>],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
-    [#{id := DeviceId}] = [DeviceObj] = decode(RespBody),
+    [#{<<"id">> := DeviceId2}] = [DeviceObj] = decode(RespBody),
+    DeviceId = DeviceId2,
     DevicePath = [?BASEPATH, <<"/client/device/">>, DeviceId],
     #{status := {200, _}, body := DeviceRespBody} = shttpc:get(DevicePath, opts(Token)),
-    #{id := DeviceId} = DeviceObj = decode(DeviceRespBody).
+    #{<<"id">> := DeviceId} = DeviceObj = decode(DeviceRespBody).
 
 get_callback(Config) ->
-    #{id := CallbackId} = proplists:get_value(callback, Config),
+    #{<<"id">> := CallbackId} = proplists:get_value(callback, Config),
     Path = [?BASEPATH, <<"/v1/callback/">>, CallbackId],
     #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts()),
-    #{id := CallbackId} = decode(RespBody).
+    #{<<"id">> := CallbackId} = decode(RespBody).
 
 upload_attachment(Config) ->
     #{token := Token,
-      object := #{id := UserId}} =  proplists:get_value(user1, Config),
-    #{id := ChatId} = proplists:get_value(chat, Config),
-    #{id := DeviceId} = proplists:get_value(device, Config),
+      object := #{<<"id">> := UserId}} =  proplists:get_value(user1, Config),
+    #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
+    #{<<"id">> := DeviceId} = proplists:get_value(device, Config),
     websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
     Path = [?BASEPATH, <<"/client/message">>],
     {ok, Cwd} = file:get_cwd(),
@@ -325,18 +326,18 @@ upload_attachment(Config) ->
     Boundary = chatli_uuid:get_v4(),
     Formatted = format_multipart_formdata(Data, [{<<"chat_id">>, ChatId}], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary),
     #{status := {201, _}, body := MessageBody} = shttpc:post(Path, Formatted, opts(attachment, Token, Boundary)),
-    #{id := MessageId} = decode(MessageBody),
+    #{<<"id">> := MessageId} = decode(MessageBody),
     receive
         {gun_ws, _ConnPid, _StreamRef0, {text, Msg}} ->
             io:format("~p", [Msg]),
-            #{id := MessageId} = decode(Msg)
+            #{<<"id">> := MessageId} = decode(Msg)
     after 8000 ->
         exit(timeout)
     end,
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
     #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
-    #{id := MessageId,
-      payload := #{url := Url}} = decode(MessageRespBody),
+    #{<<"id">> := MessageId,
+      <<"payload">> := #{<<"url">> := Url}} = decode(MessageRespBody),
     ct:log("attachment url: ~p", [Url]),
     AttachmentPath = [?BASEPATH, "/client/", Url],
     #{status := {200, _}, body := AttachmentBody} = shttpc:get(AttachmentPath, opts(Token)),
@@ -345,10 +346,13 @@ upload_attachment(Config) ->
 opts() ->
     opts(undefined).
 opts(undefined) ->
-    #{headers => #{'Content-Type' => <<"application/json">>}, close => true};
+    #{headers => #{'Content-Type' => <<"application/json">>,
+                   'Accept' => <<"application/json">>},
+                   close => true};
 opts(Token) ->
     ct:log("Token is: ~p", [Token]),
     Res = #{headers => #{'Content-Type' => <<"application/json">>,
+                         'Accept' => <<"application/json">>,
                          'Authorization' => <<"Bearer ", Token/binary>>},
             close => true},
     ct:log("Returning opts: ~p", [Res]),
@@ -363,17 +367,18 @@ opts(attachment, Token, Boundary) ->
     Res.
 
 decode(Json) ->
-    json:decode(Json, [maps, atom_keys]).
+    {ok, Decode} = thoas:decode(Json),
+    Decode.
 
 encode(Json) ->
-    json:encode(Json, [maps, binary]).
+    thoas:encode(Json).
 
 
-websocket(Path, _Token) ->
+websocket(Path, Token) ->
     {ok, ConnPid} = gun:open(?IP, ?PORT, #{transport => tcp}),
     {ok, _Protocol} = gun:await_up(ConnPid),
     io:format("ConnPid: ~p", [ConnPid]),
-    gun:ws_upgrade(ConnPid, Path, []),
+    gun:ws_upgrade(ConnPid, Path, [{<<"authorization">>, <<"bearer ", Token/binary>>}]),
 
     receive
         {gun_upgrade, ConnPid, _StreamRef, _Protocols, _Headers} ->
