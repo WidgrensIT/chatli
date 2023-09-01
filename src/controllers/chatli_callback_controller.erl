@@ -3,7 +3,7 @@
 -export([create_callback/1,
          manage_callback/1]).
 
-create_callback(#{req := #{method := <<"POST">>},
+create_callback(#{method := <<"POST">>,
                   json := #{<<"type">> := Type,
                             <<"value">> := Value,
                             <<"url">> := Url}}) ->
@@ -21,11 +21,11 @@ create_callback(#{req := #{method := <<"POST">>},
             {json, 200, #{}, Obj}
     end.
 
-manage_callback(#{req := #{method := <<"GET">>,
-                           bindings := #{callbackid := CallbackId}}}) ->
+manage_callback(#{method := <<"GET">>,
+                  bindings := #{<<"callbackid">> := CallbackId}}) ->
     {ok, Result} = chatli_db:get_callback(CallbackId),
     {json, 200, #{}, Result};
-manage_callback(#{req := #{method := <<"DELETE">>,
-                           bindings := #{callbackid := CallbackId}}}) ->
+manage_callback(#{method := <<"DELETE">>,
+                  bindings := #{<<"callbackid">> := CallbackId}}) ->
     chatli_db:delete_callback(CallbackId),
     {status, 200}.

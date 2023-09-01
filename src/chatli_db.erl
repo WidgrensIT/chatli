@@ -63,7 +63,20 @@ get_chat_messages(ChatId) ->
     query(SQL, [ChatId]).
 
 get_filtered_messages(ChatId, QS) ->
-    {Values, SqlWHERE} = qs_to_sql(QS, {[ChatId], [<<" WHERE chat_id=$1">>]}, 2),
+    Where = <<" WHERE chat_id=$1">>,
+    {Values, SqlWHERE} = case QS of
+                             #{<<"after">> := After,
+                               <<"before">> := Before} ->
+                                    {[ChatId, binary_to_integer(After), binary_to_integer(Before)],
+                                      <<Where/binary, " AND timestamp >= $2 AND timestamp <= $3 ">>};
+                             #{<<"after">> := After} ->
+                                   {[ChatId, binary_to_integer(After)],
+                                     <<Where/binary, " AND timestamp >= $2 ">>};
+                             #{<<"before">> := Before} ->
+                                   {[ChatId, binary_to_integer(Before)],
+                                     <<Where/binary, " AND timestamp <= $2 ">>};
+                             _ -> {[ChatId], Where}
+                         end,
     SQL = <<"SELECT id,
                     chat_id,
                     payload,
@@ -196,14 +209,3 @@ query(SQL, Values) ->
             logger:error("Error: ~p on SQL ~p Values ~p", [Error, SQL, Values]),
             {error, Error}
     end.
-
-qs_to_sql([], {Values, SQL}, _) ->
-  {Values, bstring:join(SQL, <<" AND ">>)};
-qs_to_sql([{<<"after">>, Value}|T], {List, Binary}, N) ->
-    Nbin = integer_to_binary(N),
-    qs_to_sql(T, {List ++ [binary_to_integer(Value)], Binary ++ [<<"timestamp >= ", "$", Nbin/binary>>]}, N+1);
-qs_to_sql([{<<"before">>, Value}|T], {List, Binary}, N) ->
-    Nbin = integer_to_binary(N),
-    qs_to_sql(T, {List ++ [binary_to_integer(Value)], Binary ++ [<<"timestamp <= ", "$", Nbin/binary>>]}, N+1);
-qs_to_sql([_|T], Acc, N) ->
-    qs_to_sql(T, Acc, N).

@@ -7,16 +7,19 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    name: OTP ${{matrix.otp}}
+    name: OTP ${{matrix.otp}} / rebar3 ${{matrix.rebar3}}
     strategy:
       fail-fast: false
       matrix:
-        otp: [23.2.1]
+        otp: [25.3.2.5]
+        rebar3: [3.22.0]
     steps:
     - uses: actions/checkout@v2
-    - uses: gleam-lang/setup-erlang@v1.1.2
+    - uses: erlef/setup-beam@v1
       with:
         otp-version: ${{matrix.otp}}
+        rebar3-version: ${{matrix.rebar3}}
+        version-type: strict
     - name: Compile
       run: rebar3 compile
     - name: Run dialyzer
