@@ -1,5 +1,5 @@
 # Build stage 0
-FROM erlang:23.3.4-alpine
+FROM erlang:25.3.2.3-alpine
 
 # Set working directory
 RUN mkdir /buildroot
