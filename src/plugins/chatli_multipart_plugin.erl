@@ -71,13 +71,8 @@ multipart(Req0, Acc) ->
 stream_file(Req0, Body) ->
     case cowboy_req:read_part_body(Req0) of
         {ok, LastBodyChunk, Req} ->
-            io:format("ok~n"),
             Chunk = <<Body/binary, LastBodyChunk/binary>>,
-            io:format("chunk~n"),
-            ByteSize = byte_size(Chunk),
-            io:format("ByteSize~n"),
-            {Req, Chunk, ByteSize};
+            {Req, Chunk, byte_size(Chunk)};
         {more, BodyChunk, Req} ->
-            io:format("more~n"),
             stream_file(Req, <<Body/binary, BodyChunk/binary>>)
     end.

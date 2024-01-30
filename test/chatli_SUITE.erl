@@ -325,6 +325,7 @@ upload_attachment(Config) ->
     Filename = filename:basename(NewPath2 ++ "itworks.jpg"),
     Boundary = chatli_uuid:get_v4(),
     Formatted = format_multipart_formdata(Data, [{<<"chat_id">>, ChatId}], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary),
+    ct:pal("multipart: ~p~n", [Formatted]),
     #{status := {201, _}, body := MessageBody} = shttpc:post(Path, Formatted, opts(attachment, Token, Boundary)),
     #{<<"id">> := MessageId} = decode(MessageBody),
     receive
