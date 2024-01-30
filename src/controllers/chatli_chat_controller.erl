@@ -3,7 +3,8 @@
          message/1,
          get_archive/1,
          manage_message/1,
-         chat/1,
+         get_chat/1,
+         create_chat/1,
          manage_chat/1,
          participants/1,
          manage_participants/1,
@@ -12,8 +13,7 @@
          get_history/1
         ]).
 
-message(#{method := <<"POST">>,
-          auth_data := #{id := UserId},
+message(#{auth_data := #{id := UserId},
           json := Json}) ->
     logger:debug("Message~n"),
     Id = chatli_uuid:get_v4(),
@@ -33,10 +33,9 @@ message(#{method := <<"POST">>,
         _ ->
             {status, 400}
     end;
-message(#{method := <<"POST">>,
-          headers := Headers,
+message(#{headers := Headers,
           auth_data := #{id := Sender},
-          multipart_data := FormData} = Req) ->
+          multipart_data := FormData}) ->
     Id = chatli_uuid:get_v4(),
     logger:debug("Headers: ~p~n", [Headers]),
     case FormData of
@@ -65,8 +64,7 @@ message(#{method := <<"POST">>,
             end
     end.
 
-get_attachment(#{method := <<"GET">>,
-                 bindings := #{<<"attachmentid">> := AttachmentId,
+get_attachment(#{bindings := #{<<"attachmentid">> := AttachmentId,
                                <<"chatid">> := ChatId}}) ->
     case chatli_db:get_attachment(AttachmentId, ChatId) of
         undefined ->
@@ -79,9 +77,8 @@ get_attachment(#{method := <<"GET">>,
             {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
     end.
 
-get_attachment_no_auth(#{req := #{method := <<"GET">>,
-                                  bindings := #{<<"attachmentid">> := AttachmentId,
-                                                <<"chatid">> := ChatId}}}) ->
+get_attachment_no_auth(#{bindings := #{<<"attachmentid">> := AttachmentId,
+                                       <<"chatid">> := ChatId}}) ->
     case chatli_db:get_attachment(AttachmentId, ChatId) of
         undefined ->
             {status, 404};
@@ -93,8 +90,7 @@ get_attachment_no_auth(#{req := #{method := <<"GET">>,
             {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
     end.
 
-get_history(#{method := <<"POST">>,
-              json := #{<<"type">> := Type,
+get_history(#{json := #{<<"type">> := Type,
                         <<"value">> := Value,
                         <<"timestamp">> := Timestamp}}) ->
     case chatli_user_db:find(Type, Value) of
@@ -135,26 +131,22 @@ encode(Message) ->
     end.
 
 
-get_archive(#{method := <<"GET">>,
-              bindings := #{<<"chatid">> := ChatId},
+get_archive(#{bindings := #{<<"chatid">> := ChatId},
               parsed_qs := []}) ->
     {ok, Result} = chatli_db:get_chat_messages(ChatId),
     {json, 200, #{}, Result};
-get_archive(#{method := <<"GET">>,
-              bindings := #{<<"chatid">> := ChatId},
+get_archive(#{bindings := #{<<"chatid">> := ChatId},
               parsed_qs := QS}) ->
     {ok, Result} = chatli_db:get_filtered_messages(ChatId, QS),
     {json, 200, #{}, Result}.
 
 
-manage_message(#{method := <<"GET">>,
-                 bindings := #{<<"chatid">> := ChatId,
+manage_message(#{bindings := #{<<"chatid">> := ChatId,
                                <<"messageid">> := MessageId}}) ->
     {ok, Message} = chatli_db:get_message(ChatId, MessageId),
     {json, 200, #{}, Message}.
 
-chat(#{method := <<"GET">>,
-       auth_data := #{id := UserId}}) ->
+get_chat(#{auth_data := #{id := UserId}}) ->
     case chatli_db:get_all_chats(UserId) of
         {ok, Chats} ->
             Chats2 = get_participants(Chats, UserId, []),
@@ -162,9 +154,8 @@ chat(#{method := <<"GET">>,
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {json, 200, #{}, []}
-    end;
-chat(#{method := <<"POST">>,
-       json := #{<<"participants">> := Participants,
+    end.
+create_chat(#{json := #{<<"participants">> := Participants,
                  <<"type">> := Type} = Json,
        auth_data := #{id := UserId}}) ->
     Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
@@ -290,7 +281,7 @@ attachments_message(Id, ChatId, Sender, Attachments) ->
 
 save_file([], Acc, _) ->
     Acc;
-save_file([{file, Bytes, Mime, ByteSize}|T] = Filelist, Acc, ChatId) ->
+save_file([{file, Bytes, Mime, ByteSize}|T], Acc, ChatId) ->
     UUID = chatli_uuid:get_v4_no_dash(list),
     {ok, Path} = application:get_env(chatli, download_path),
     logger:debug("path: ~p", [Path]),
