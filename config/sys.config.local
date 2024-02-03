@@ -19,6 +19,7 @@
                                   port => 8090
                                  }},
          {dev_mode, true},
+         {use_stacktrace, true},
          {bootstrap_application, chatli}, %% Bootstraps the application
          %% Plugins is written on form {RequestType, Module, Options, Priority}
          %% Priority is that the lowest number is executed first
