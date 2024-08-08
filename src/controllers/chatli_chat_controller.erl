@@ -15,9 +15,9 @@
          get_history/1
         ]).
 
-message(#{req := #{method := <<"POST">>},
-          auth_data := #{id := UserId},
+message(#{auth_data := #{id := UserId},
           json := Json}) ->
+    logger:debug("Message~n"),
     Id = chatli_uuid:get_v4(),
     #{<<"chat_id">> := ChatId} = Json,
     {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(UserId),
@@ -35,10 +35,12 @@ message(#{req := #{method := <<"POST">>},
         _ ->
             {status, 400}
     end;
-message(#{req := #{method := <<"POST">>} = Req,
-          auth_data := #{id := Sender}}) ->
+message(#{headers := Headers,
+          auth_data := #{id := Sender},
+          multipart_data := FormData}) ->
     Id = chatli_uuid:get_v4(),
-    case multipart(Req) of
+    logger:debug("Headers: ~p~n", [Headers]),
+    case FormData of
         [] ->
             logger:debug("Empty form data"),
             {status, 200};
@@ -64,9 +66,8 @@ message(#{req := #{method := <<"POST">>} = Req,
             end
     end.
 
-get_attachment(#{req := #{method := <<"GET">>,
-                          bindings := #{attachmentid := AttachmentId,
-                                        chatid := ChatId}}}) ->
+get_attachment(#{bindings := #{<<"attachmentid">> := AttachmentId,
+                               <<"chatid">> := ChatId}}) ->
     case chatli_db:get_attachment(AttachmentId, ChatId) of
         undefined ->
             {status, 404};
@@ -78,9 +79,8 @@ get_attachment(#{req := #{method := <<"GET">>,
             {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
     end.
 
-get_attachment_no_auth(#{req := #{method := <<"GET">>,
-                                  bindings := #{attachmentid := AttachmentId,
-                                                chatid := ChatId}}}) ->
+get_attachment_no_auth(#{bindings := #{<<"attachmentid">> := AttachmentId,
+                                       <<"chatid">> := ChatId}}) ->
     case chatli_db:get_attachment(AttachmentId, ChatId) of
         undefined ->
             {status, 404};
@@ -92,8 +92,7 @@ get_attachment_no_auth(#{req := #{method := <<"GET">>,
             {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
     end.
 
-get_history(#{req := #{method := <<"POST">>},
-              json := #{<<"type">> := Type,
+get_history(#{json := #{<<"type">> := Type,
                         <<"value">> := Value,
                         <<"timestamp">> := Timestamp}}) ->
     case chatli_user_db:find(Type, Value) of
@@ -134,19 +133,18 @@ encode(Message) ->
     end.
 
 
-get_archive(#{req := #{method := <<"GET">>},
-              bindings := #{chatid := ChatId},
-              qs := QS}) ->
-    {ok, Result} = chatli_db:get_filtered_messages(ChatId, QS),
-    {json, 200, #{}, Result};
-get_archive(#{req := #{method := <<"GET">>},
-              bindings := #{chatid := ChatId}}) ->
+get_archive(#{bindings := #{<<"chatid">> := ChatId},
+              parsed_qs := []}) ->
     {ok, Result} = chatli_db:get_chat_messages(ChatId),
+    {json, 200, #{}, Result};
+get_archive(#{bindings := #{<<"chatid">> := ChatId},
+              parsed_qs := QS}) ->
+    {ok, Result} = chatli_db:get_filtered_messages(ChatId, QS),
     {json, 200, #{}, Result}.
 
-manage_message(#{req := #{method := <<"GET">>,
-                          bindings := #{chatid := ChatId,
-                                        messageid := MessageId}}}) ->
+
+manage_message(#{bindings := #{<<"chatid">> := ChatId,
+                               <<"messageid">> := MessageId}}) ->
     {ok, Message} = chatli_db:get_message(ChatId, MessageId),
     {json, 200, #{}, Message}.
 
@@ -194,8 +192,8 @@ delete_chat(#{bindings := #{<<"chatid">> := ChatId}}) ->
     chatli_db:delete_chat(ChatId),
     {status, 200}.
 
-participants(#{req := #{method := <<"GET">>,
-                        bindings := #{chatid := ChatId}},
+participants(#{method := <<"GET">>,
+               bindings := #{<<"chatid">> := ChatId},
                auth_data := #{id := UserId}}) ->
     case chatli_db:get_all_other_participants(ChatId, UserId) of
         {ok, Participants} ->
@@ -205,10 +203,10 @@ participants(#{req := #{method := <<"GET">>,
             logger:warning("participants error: ~p", [Error]),
             {status, 500}
     end;
-participants(#{ req := #{method := <<"POST">>,
-                         bindings := #{chatid := ChatId}},
-                json := Json,
-                auth_data := #{id := Sender}}) ->
+participants(#{method := <<"POST">>,
+               bindings := #{<<"chatid">> := ChatId},
+               json := Json,
+               auth_data := #{id := Sender}}) ->
     #{<<"id">> := UserId} = Json,
     case chatli_db:add_participant(ChatId, UserId) of
         ok ->
@@ -222,9 +220,9 @@ participants(#{ req := #{method := <<"POST">>,
             {status, 500}
     end.
 
-manage_participants(#{req := #{ method := <<"DELETE">>,
-                                bindings := #{chatid := ChatId,
-                                              participantid := ParticipantId}},
+manage_participants(#{method := <<"DELETE">>,
+                      bindings := #{<<"chatid">> := ChatId,
+                                    <<"participantid">> := ParticipantId},
                       auth_data := #{id := Sender}}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {ok, User} = chatli_user_db:get(ParticipantId),
@@ -285,7 +283,7 @@ attachments_message(Id, ChatId, Sender, Attachments) ->
 
 save_file([], Acc, _) ->
     Acc;
-save_file([{file, Bytes, Mime, ByteSize}|T] = Filelist, Acc, ChatId) ->
+save_file([{file, Bytes, Mime, ByteSize}|T], Acc, ChatId) ->
     UUID = chatli_uuid:get_v4_no_dash(list),
     {ok, Path} = application:get_env(chatli, download_path),
     logger:debug("path: ~p", [Path]),
@@ -305,29 +303,3 @@ save_file([{file, Bytes, Mime, ByteSize}|T] = Filelist, Acc, ChatId) ->
 save_file([_|T], Acc, ChatId) ->
     save_file(T, Acc, ChatId).
 
-multipart(Req0) ->
-    case cowboy_req:read_part(Req0) of
-        {ok, Headers, Req1} ->
-            case cow_multipart:form_data(Headers) of
-                {data, FieldName} ->
-                    logger:debug("FieldName: ~p", [FieldName]),
-                    {ok, Body, Req2} = cowboy_req:read_part_body(Req1),
-                    [{FieldName, Body}| multipart(Req2)];
-                {file, FieldName, Filename, CType} ->
-                    logger:debug("FieldName: ~p FileName: ~p CType: ~p", [FieldName, Filename, CType]),
-                    {Req2, TmpFile, ByteSize} = stream_file(Req1, <<>>),
-                    Mime = mimetypes:filename(Filename),
-                    [{file, TmpFile, Mime, ByteSize}|multipart(Req2)]
-            end;
-        {done, _} ->
-            []
-    end.
-
-stream_file(Req0, Body) ->
-    case cowboy_req:read_part_body(Req0) of
-        {ok, LastBodyChunk, Req} ->
-            Chunk = <<Body/binary, LastBodyChunk/binary>>,
-            {Req, Chunk, byte_size(Chunk)};
-        {more, BodyChunk, Req} ->
-            stream_file(Req, <<Body/binary, BodyChunk/binary>>)
-    end.
