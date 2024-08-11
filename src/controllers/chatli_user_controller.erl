@@ -18,7 +18,7 @@ user(#{method := <<"GET">>,
 
 signup(#{method := <<"POST">>,
          json := JSON}) ->
-    Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
+    Id = chatli_uuid:get_v4(),
     logger:debug("json: ~p", [JSON]),
     Phonenumber = maps:get(<<"phoneNumber">>, JSON, <<>>),
     Email = maps:get(<<"email">>, JSON, <<>>),

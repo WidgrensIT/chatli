@@ -161,7 +161,7 @@ get_chats(#{auth_data := #{id := UserId}}) ->
 create_chat(#{json := #{<<"participants">> := Participants,
                         <<"type">> := Type} = Json,
               auth_data := #{id := UserId}}) ->
-    Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
+    Id = chatli_uuid:get_v4(),
     Object = maps:merge(#{<<"id">> => Id}, Json),
     case Type of
         <<"1to1">> ->
