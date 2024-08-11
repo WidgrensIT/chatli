@@ -1,31 +1,39 @@
 -module(chatli_device_db).
 
--export([upsert/3,
-         delete/2,
-         get/2,
-         get_all/1]).
+-export([
+    upsert/3,
+    delete/2,
+    get/2,
+    get_all/1
+]).
 
 upsert(DeviceId, UserId, Name) ->
-  delete(DeviceId, UserId),
-    SQL = <<"INSERT INTO
-               device
-               (
-                 id,
-                 user_id,
-                 name
-               ) VALUES (
-                 $1,
-                 $2,
-                 $3
-               )">>,
+    delete(DeviceId, UserId),
+    SQL =
+        <<
+            "INSERT INTO\n"
+            "               device\n"
+            "               (\n"
+            "                 id,\n"
+            "                 user_id,\n"
+            "                 name\n"
+            "               ) VALUES (\n"
+            "                 $1,\n"
+            "                 $2,\n"
+            "                 $3\n"
+            "               )"
+        >>,
     chatli_db:query1(SQL, [DeviceId, UserId, Name]).
 
 delete(DeviceId, UserId) ->
-    SQL = <<"DELETE FROM
-                device
-            WHERE
-                id = $1 AND
-                user_id = $2">>,
+    SQL =
+        <<
+            "DELETE FROM\n"
+            "                device\n"
+            "            WHERE\n"
+            "                id = $1 AND\n"
+            "                user_id = $2"
+        >>,
     chatli_db:query(SQL, [DeviceId, UserId]).
 
 get(DeviceId, UserId) ->

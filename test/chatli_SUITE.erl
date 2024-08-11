@@ -14,7 +14,7 @@
 %% @end
 %%--------------------------------------------------------------------
 suite() ->
-    [{timetrap,{seconds,30}}].
+    [{timetrap, {seconds, 30}}].
 
 %%--------------------------------------------------------------------
 %% @spec init_per_suite(Config0) ->
@@ -30,51 +30,80 @@ init_per_suite(_Config) ->
     Password = <<"1234">>,
     Username2 = <<"username2">>,
     Password2 = <<"12345">>,
-    User1 = #{<<"email">> => <<"my@email.com">>,
-              <<"username">> => Username,
-              <<"password">> => Password},
-    User2 = #{<<"phoneNumber">> => <<"123456">>,
-              <<"username">> => Username2,
-              <<"password">> => Password2},
+    User1 = #{
+        <<"email">> => <<"my@email.com">>,
+        <<"username">> => Username,
+        <<"password">> => Password
+    },
+    User2 = #{
+        <<"phoneNumber">> => <<"123456">>,
+        <<"username">> => Username2,
+        <<"password">> => Password2
+    },
     Path = [?BASEPATH, <<"/v1/signup">>],
     #{status := {201, _}} = jhn_shttpc:post(Path, encode(User1), opts()),
     Path = [?BASEPATH, <<"/v1/signup">>],
     #{status := {201, _}} = jhn_shttpc:post(Path, encode(User2), opts()),
     LoginPath = [?BASEPATH, <<"/v1/login">>],
-    #{status := {200, _}, body := LoginRespBody} = jhn_shttpc:post(LoginPath, encode(#{username => Username,
-                                                                                   password => Password}), opts()),
+    #{status := {200, _}, body := LoginRespBody} = jhn_shttpc:post(
+        LoginPath,
+        encode(#{
+            username => Username,
+            password => Password
+        }),
+        opts()
+    ),
     #{<<"access_token">> := Token} = decode(LoginRespBody),
-    [_ , Payload, _] = jhn_bstring:tokens(Token, <<".">>),
+    [_, Payload, _] = jhn_bstring:tokens(Token, <<".">>),
     UserObj1 = decode(base64:decode(Payload)),
-    #{status := {200, _}, body := LoginRespBody2} = jhn_shttpc:post(LoginPath, encode(#{username => Username2,
-                                                                                    password => Password2}), opts()),
+    #{status := {200, _}, body := LoginRespBody2} = jhn_shttpc:post(
+        LoginPath,
+        encode(#{
+            username => Username2,
+            password => Password2
+        }),
+        opts()
+    ),
     #{<<"access_token">> := Token2} = decode(LoginRespBody2),
-    [_ , Payload2, _] = jhn_bstring:tokens(Token2, <<".">>),
+    [_, Payload2, _] = jhn_bstring:tokens(Token2, <<".">>),
     #{<<"id">> := UserId2} = UserObj2 = decode(base64:decode(Payload2)),
     CallbackPath = [?BASEPATH, <<"/v1/callback">>],
-    CallbackObject = #{type => <<"email">>,
-                       value => <<"my@email.com">>,
-                       url => <<"http://localhost:8095/receiver">>},
-    #{status := {200, _}, body := CallbackRespBody} = jhn_shttpc:post(CallbackPath, encode(CallbackObject), opts()),
-    Chat = #{<<"name">> => <<"my c hat">>,
-             <<"description">> => <<"This is a c hat">>,
-             <<"type">> => <<"1to1">>,
-             <<"participants">> => [#{<<"id">> => UserId2}]},
+    CallbackObject = #{
+        type => <<"email">>,
+        value => <<"my@email.com">>,
+        url => <<"http://localhost:8095/receiver">>
+    },
+    #{status := {200, _}, body := CallbackRespBody} = jhn_shttpc:post(
+        CallbackPath, encode(CallbackObject), opts()
+    ),
+    Chat = #{
+        <<"name">> => <<"my c hat">>,
+        <<"description">> => <<"This is a c hat">>,
+        <<"type">> => <<"1to1">>,
+        <<"participants">> => [#{<<"id">> => UserId2}]
+    },
     ChatPath = [?BASEPATH, <<"/client/chat">>],
-    #{status := {201, _}, body := ChatRespBody} = jhn_shttpc:post(ChatPath, encode(Chat), opts(Token)),
+    #{status := {201, _}, body := ChatRespBody} = jhn_shttpc:post(
+        ChatPath, encode(Chat), opts(Token)
+    ),
     Device = #{<<"name">> => <<"my device">>},
     DeviceId = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     DevicePath = [?BASEPATH, <<"/client/device/">>, DeviceId],
     #{status := {200, _}} = jhn_shttpc:put(DevicePath, encode(Device), opts(Token)),
-    [{user1, #{object => UserObj1,
-               token => Token}},
-     {user2, #{object => UserObj2,
-               token => Token2}},
-     {chat, decode(ChatRespBody)},
-     {device, maps:merge(#{<<"id">> => DeviceId}, Device)},
-     {callback,  decode(CallbackRespBody)},
-     {timestamp, os:system_time(millisecond)}
-     ].
+    [
+        {user1, #{
+            object => UserObj1,
+            token => Token
+        }},
+        {user2, #{
+            object => UserObj2,
+            token => Token2
+        }},
+        {chat, decode(ChatRespBody)},
+        {device, maps:merge(#{<<"id">> => DeviceId}, Device)},
+        {callback, decode(CallbackRespBody)},
+        {timestamp, os:system_time(millisecond)}
+    ].
 
 %%--------------------------------------------------------------------
 %% @spec end_per_suite(Config0) -> term() | {save_config,Config1}
@@ -82,10 +111,14 @@ init_per_suite(_Config) ->
 %% @end
 %%--------------------------------------------------------------------
 end_per_suite(Config) ->
-    #{object := #{<<"id">> := Id},
-      token := Token} = proplists:get_value(user1, Config),
-    #{object := #{<<"id">> := Id2},
-      token := Token2} = proplists:get_value(user2, Config),
+    #{
+        object := #{<<"id">> := Id},
+        token := Token
+    } = proplists:get_value(user1, Config),
+    #{
+        object := #{<<"id">> := Id2},
+        token := Token2
+    } = proplists:get_value(user2, Config),
     Path = [?BASEPATH, <<"/client/user/">>, Id],
     jhn_shttpc:delete(Path, opts(Token)),
     Path2 = [?BASEPATH, <<"/client/user/">>, Id2],
@@ -169,18 +202,20 @@ groups() ->
 %% @end
 %%--------------------------------------------------------------------
 all() ->
-    [get_all_users,
-     list_participant,
-     get_all_chats,
-     create_same_chat_again,
-     send_message,
-     get_all_message,
-     get_filtered_message,
-     get_historic_message,
-     upload_attachment,
-     remove_participant,
-     get_all_devices,
-     get_callback].
+    [
+        get_all_users,
+        list_participant,
+        get_all_chats,
+        create_same_chat_again,
+        send_message,
+        get_all_message,
+        get_filtered_message,
+        get_historic_message,
+        upload_attachment,
+        remove_participant,
+        get_all_devices,
+        get_callback
+    ].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase(Config0) ->
@@ -192,20 +227,20 @@ all() ->
 %% @end
 %%--------------------------------------------------------------------
 get_all_users(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token} = proplists:get_value(user1, Config),
     Path = [?BASEPATH, <<"/client/user">>],
     #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
     4 = length(decode(RespBody)).
 
 add_participant(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token} = proplists:get_value(user1, Config),
     #{object := #{id := UserId2}} = proplists:get_value(user2, Config),
     #{id := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {201, _}} = jhn_shttpc:post(Path, encode(#{id => UserId2}), opts(Token)).
 
 list_participant(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token} = proplists:get_value(user1, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
     #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
@@ -221,18 +256,22 @@ get_all_chats(Config) ->
 
 create_same_chat_again(Config) ->
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
-    #{token := Token} =  proplists:get_value(user1, Config),
-    #{object := #{<<"id">> := UserId2}} =  proplists:get_value(user2, Config),
-    Chat = #{<<"name">> => <<"my c hat">>,
-             <<"description">> => <<"This is a c hat">>,
-             <<"type">> => <<"1to1">>,
-             <<"participants">> => [#{<<"id">> => UserId2}]},
+    #{token := Token} = proplists:get_value(user1, Config),
+    #{object := #{<<"id">> := UserId2}} = proplists:get_value(user2, Config),
+    Chat = #{
+        <<"name">> => <<"my c hat">>,
+        <<"description">> => <<"This is a c hat">>,
+        <<"type">> => <<"1to1">>,
+        <<"participants">> => [#{<<"id">> => UserId2}]
+    },
     ChatPath = [?BASEPATH, <<"/client/chat">>],
-    #{status := {201, _}, body := ChatRespBody} = jhn_shttpc:post(ChatPath, encode(Chat), opts(Token)),
+    #{status := {201, _}, body := ChatRespBody} = jhn_shttpc:post(
+        ChatPath, encode(Chat), opts(Token)
+    ),
     #{<<"id">> := ChatId} = decode(ChatRespBody).
 
 remove_participant(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token} = proplists:get_value(user1, Config),
     #{object := #{<<"id">> := UserId2}} = proplists:get_value(user2, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant/">>, UserId2],
@@ -243,16 +282,22 @@ remove_participant(Config) ->
     0 = length(Participants).
 
 send_message(Config) ->
-    #{token := Token,
-      object := #{<<"id">> := UserId}} =  proplists:get_value(user1, Config),
+    #{
+        token := Token,
+        object := #{<<"id">> := UserId}
+    } = proplists:get_value(user1, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     #{<<"id">> := DeviceId} = proplists:get_value(device, Config),
     websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
     Path = [?BASEPATH, <<"/client/message">>],
-    #{status := {201, _}, body := MessageBody} = jhn_shttpc:post(Path,
-                                                             encode(#{chat_id => ChatId,
-                                                                      payload => <<"hi hi">>}),
-                                                        opts(Token)),
+    #{status := {201, _}, body := MessageBody} = jhn_shttpc:post(
+        Path,
+        encode(#{
+            chat_id => ChatId,
+            payload => <<"hi hi">>
+        }),
+        opts(Token)
+    ),
     #{<<"id">> := MessageId} = decode(MessageBody),
     receive
         {gun_ws, _ConnPid, _StreamRef0, {text, Msg}} ->
@@ -263,7 +308,7 @@ send_message(Config) ->
     end.
 
 get_all_message(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token} = proplists:get_value(user1, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message">>],
     #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
@@ -273,7 +318,7 @@ get_all_message(Config) ->
     #{<<"id">> := MessageId} = MessageObj = decode(MessageRespBody).
 
 get_filtered_message(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token} = proplists:get_value(user1, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     StartTimestamp = integer_to_binary(proplists:get_value(timestamp, Config)),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message?after=">>, StartTimestamp],
@@ -288,13 +333,15 @@ get_filtered_message(Config) ->
 
 get_historic_message(Config) ->
     Path = [?BASEPATH, <<"/v1/history">>],
-    Body = encode(#{type => <<"email">>,
-                    value => <<"my@email.com">>,
-                    timestamp => proplists:get_value(timestamp, Config)}),
+    Body = encode(#{
+        type => <<"email">>,
+        value => <<"my@email.com">>,
+        timestamp => proplists:get_value(timestamp, Config)
+    }),
     #{status := {200, _}} = jhn_shttpc:post(Path, Body, opts()).
 
 get_all_devices(Config) ->
-    #{token := Token} =  proplists:get_value(user1, Config),
+    #{token := Token} = proplists:get_value(user1, Config),
     #{<<"id">> := DeviceId} = DeviceObj = proplists:get_value(device, Config),
     Path = [?BASEPATH, <<"/client/device">>],
     #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
@@ -311,8 +358,10 @@ get_callback(Config) ->
     #{<<"id">> := CallbackId} = decode(RespBody).
 
 upload_attachment(Config) ->
-    #{token := Token,
-      object := #{<<"id">> := UserId}} =  proplists:get_value(user1, Config),
+    #{
+        token := Token,
+        object := #{<<"id">> := UserId}
+    } = proplists:get_value(user1, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     #{<<"id">> := DeviceId} = proplists:get_value(device, Config),
     websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
@@ -324,9 +373,13 @@ upload_attachment(Config) ->
     {ok, Data} = file:read_file(NewPath2 ++ "itworks.jpg"),
     Filename = filename:basename(NewPath2 ++ "itworks.jpg"),
     Boundary = chatli_uuid:get_v4(),
-    Formatted = format_multipart_formdata(Data, [{<<"chat_id">>, ChatId}], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary),
+    Formatted = format_multipart_formdata(
+        Data, [{<<"chat_id">>, ChatId}], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary
+    ),
     ct:pal("multipart: ~p~n", [Formatted]),
-    #{status := {201, _}, body := MessageBody} = jhn_shttpc:post(Path, Formatted, opts(attachment, Token, Boundary)),
+    #{status := {201, _}, body := MessageBody} = jhn_shttpc:post(
+        Path, Formatted, opts(attachment, Token, Boundary)
+    ),
     #{<<"id">> := MessageId} = decode(MessageBody),
     receive
         {gun_ws, _ConnPid, _StreamRef0, {text, Msg}} ->
@@ -337,8 +390,10 @@ upload_attachment(Config) ->
     end,
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
     #{status := {200, _}, body := MessageRespBody} = jhn_shttpc:get(MessagePath, opts(Token)),
-    #{<<"id">> := MessageId,
-      <<"payload">> := #{<<"url">> := Url}} = decode(MessageRespBody),
+    #{
+        <<"id">> := MessageId,
+        <<"payload">> := #{<<"url">> := Url}
+    } = decode(MessageRespBody),
     ct:log("attachment url: ~p", [Url]),
     AttachmentPath = [?BASEPATH, "/client/", Url],
     #{status := {200, _}, body := AttachmentBody} = jhn_shttpc:get(AttachmentPath, opts(Token)),
@@ -347,23 +402,35 @@ upload_attachment(Config) ->
 opts() ->
     opts(undefined).
 opts(undefined) ->
-    #{headers => #{'Content-Type' => <<"application/json">>,
-                   'Accept' => <<"application/json">>},
-                   close => true};
+    #{
+        headers => #{
+            'Content-Type' => <<"application/json">>,
+            'Accept' => <<"application/json">>
+        },
+        close => true
+    };
 opts(Token) ->
     ct:log("Token is: ~p", [Token]),
-    Res = #{headers => #{'Content-Type' => <<"application/json">>,
-                         'Accept' => <<"application/json">>,
-                         'Authorization' => <<"Bearer ", Token/binary>>},
-            close => true},
+    Res = #{
+        headers => #{
+            'Content-Type' => <<"application/json">>,
+            'Accept' => <<"application/json">>,
+            'Authorization' => <<"Bearer ", Token/binary>>
+        },
+        close => true
+    },
     ct:log("Returning opts: ~p", [Res]),
     Res.
 
 opts(attachment, Token, Boundary) ->
     ct:log("Token is: ~p", [Token]),
-    Res = #{headers => #{'Content-Type' => <<"multipart/form-data; boundary=", Boundary/binary>>,
-                         'Authorization' => <<"Bearer ", Token/binary>>},
-            close => true},
+    Res = #{
+        headers => #{
+            'Content-Type' => <<"multipart/form-data; boundary=", Boundary/binary>>,
+            'Authorization' => <<"Bearer ", Token/binary>>
+        },
+        close => true
+    },
     ct:log("Returning opts: ~p", [Res]),
     Res.
 
@@ -373,7 +440,6 @@ decode(Json) ->
 
 encode(Json) ->
     thoas:encode(Json).
-
 
 websocket(Path, Token) ->
     {ok, ConnPid} = gun:open(?IP, ?PORT, #{transport => tcp}),
@@ -391,37 +457,60 @@ websocket(Path, Token) ->
         Err ->
             io:format("WS unexpectedly received ~p", [Err])
 
-            %% More clauses here as needed.
+        %% More clauses here as needed.
     after 2000 ->
-            exit(timeout)
+        exit(timeout)
     end.
 
 -spec format_multipart_formdata(Data, Params, Name, FileNames, MimeType, Boundary) -> binary() when
-    Data:: binary(),
-    Params:: list(),
-    Name:: binary(),
-    FileNames:: list(),
-    MimeType:: binary(),
-    Boundary:: binary().
+    Data :: binary(),
+    Params :: list(),
+    Name :: binary(),
+    FileNames :: list(),
+    MimeType :: binary(),
+    Boundary :: binary().
 format_multipart_formdata(Data, Params, Name, FileNames, MimeType, Boundary) ->
     StartBoundary = erlang:iolist_to_binary([<<"--">>, Boundary]),
     LineSeparator = <<"\r\n">>,
-    WithParams = lists:foldl(fun({Key, Value}, Acc) ->
-        erlang:iolist_to_binary([
-            Acc,
-            StartBoundary, LineSeparator,
-            <<"Content-Disposition: form-data; name=\"">>, Key, <<"\"">>, LineSeparator, LineSeparator,
-            Value, LineSeparator
-        ])
-    end, <<"">>, Params),
-    WithPaths = lists:foldl(fun(FileName, Acc) ->
-        erlang:iolist_to_binary([
-            Acc,
-            StartBoundary, LineSeparator,
-            <<"Content-Disposition: form-data; name=\"">>, Name, <<"\"; filename=\"">>, FileName, <<"\"">>, LineSeparator,
-            <<"Content-Type: ">>, MimeType, LineSeparator, LineSeparator,
-            Data,
-            LineSeparator
-        ])
-    end, WithParams, FileNames),
+    WithParams = lists:foldl(
+        fun({Key, Value}, Acc) ->
+            erlang:iolist_to_binary([
+                Acc,
+                StartBoundary,
+                LineSeparator,
+                <<"Content-Disposition: form-data; name=\"">>,
+                Key,
+                <<"\"">>,
+                LineSeparator,
+                LineSeparator,
+                Value,
+                LineSeparator
+            ])
+        end,
+        <<"">>,
+        Params
+    ),
+    WithPaths = lists:foldl(
+        fun(FileName, Acc) ->
+            erlang:iolist_to_binary([
+                Acc,
+                StartBoundary,
+                LineSeparator,
+                <<"Content-Disposition: form-data; name=\"">>,
+                Name,
+                <<"\"; filename=\"">>,
+                FileName,
+                <<"\"">>,
+                LineSeparator,
+                <<"Content-Type: ">>,
+                MimeType,
+                LineSeparator,
+                LineSeparator,
+                Data,
+                LineSeparator
+            ])
+        end,
+        WithParams,
+        FileNames
+    ),
     erlang:iolist_to_binary([WithPaths, StartBoundary, <<"--">>, LineSeparator]).

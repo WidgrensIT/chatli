@@ -1,7 +1,9 @@
 -module(chatli_json).
 
--export([encode/2,
-         decode/2]).
+-export([
+    encode/2,
+    decode/2
+]).
 
 encode(Json, _) ->
     thoas:encode(Json).
