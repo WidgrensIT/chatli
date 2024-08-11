@@ -7,7 +7,6 @@
          get_chat/1,
          delete_chat/1,
          create_chat/1,
-         manage_chat/1,
          participants/1,
          manage_participants/1,
          get_attachment/1,
@@ -15,26 +14,7 @@
          get_history/1
         ]).
 
-message(#{auth_data := #{id := UserId},
-          json := Json}) ->
-    logger:debug("Message~n"),
-    Id = chatli_uuid:get_v4(),
-    #{<<"chat_id">> := ChatId} = Json,
-    {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(UserId),
-    Object = maps:merge(#{<<"id">> => Id,
-                          <<"sender">> => UserId,
-                          <<"sender_info">> => #{<<"phone_number">> => PhoneNumber,
-                                                 <<"email">> => Email},
-                          <<"timestamp">> => os:system_time(millisecond),
-                          <<"type">> => <<"message">>,
-                          <<"action">> => <<"message">>}, Json),
-    case chatli_db:create_message(Object) of
-        ok ->
-            ok = chatli_ws_srv:publish(ChatId, json:encode(Object, [maps, binary])),
-            {json, 201, #{}, #{id => Id}};
-        _ ->
-            {status, 400}
-    end;
+
 message(#{headers := Headers,
           auth_data := #{id := Sender},
           multipart_data := FormData}) ->
@@ -56,7 +36,7 @@ message(#{headers := Headers,
             Message = attachments_message(Id, ChatId, Sender, Attachments),
             case chatli_db:create_message(Message) of
                 ok ->
-                    try json:encode(Message, [binary, maps]) of
+                    try thoas:encode(Message) of
                         Json -> ok = chatli_ws_srv:publish(ChatId, Json),
                                 {json, 201, #{}, #{id => Id}}
                     catch _:_ -> {status, 500}
@@ -64,8 +44,27 @@ message(#{headers := Headers,
                 _ ->
                     {status, 500}
             end
+    end;
+message(#{auth_data := #{id := UserId},
+          json := Json}) ->
+    logger:debug("Message~n"),
+    Id = chatli_uuid:get_v4(),
+    #{<<"chat_id">> := ChatId} = Json,
+    {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(UserId),
+    Object = maps:merge(#{<<"id">> => Id,
+                          <<"sender">> => UserId,
+                          <<"sender_info">> => #{<<"phone_number">> => PhoneNumber,
+                                                 <<"email">> => Email},
+                          <<"timestamp">> => os:system_time(millisecond),
+                          <<"type">> => <<"message">>,
+                          <<"action">> => <<"message">>}, Json),
+    case chatli_db:create_message(Object) of
+        ok ->
+            ok = chatli_ws_srv:publish(ChatId, thoas:encode(Object)),
+            {json, 201, #{}, #{id => Id}};
+        _ ->
+            {status, 400}
     end.
-
 get_attachment(#{bindings := #{<<"attachmentid">> := AttachmentId,
                                <<"chatid">> := ChatId}}) ->
     case chatli_db:get_attachment(AttachmentId, ChatId) of
@@ -127,7 +126,7 @@ send_callback([Message | T], UserId) ->
     end.
 
 encode(Message) ->
-    try json:encode(Message, [binary, maps]) of
+    try thoas:encode(Message) of
         Json -> Json
     catch _:_ -> error
     end.
@@ -146,6 +145,7 @@ get_archive(#{bindings := #{<<"chatid">> := ChatId},
 manage_message(#{bindings := #{<<"chatid">> := ChatId,
                                <<"messageid">> := MessageId}}) ->
     {ok, Message} = chatli_db:get_message(ChatId, MessageId),
+    logger:debug("manage message: ~p~n", [Message]),
     {json, 200, #{}, Message}.
 
 get_chats(#{auth_data := #{id := UserId}}) ->
@@ -228,7 +228,7 @@ manage_participants(#{method := <<"DELETE">>,
     {ok, User} = chatli_user_db:get(ParticipantId),
     Id = chatli_uuid:get_v4(),
     Message = event_message(Id, ChatId, Sender, User, <<"leave">>),
-    try json:encode(Message, [binary, maps]) of
+    try thoas:encode(Message) of
         Json -> ok = chatli_ws_srv:publish(ChatId, Json),
                 {status, 200}
     catch _:_ -> {status, 500}

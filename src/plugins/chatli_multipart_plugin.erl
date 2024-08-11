@@ -61,7 +61,7 @@ multipart(Req0, Acc) ->
                     {file, FieldName, Filename, CType} ->
                         logger:debug("FieldName: ~p FileName: ~p CType: ~p", [FieldName, Filename, CType]),
                         {Req2, TmpFile, ByteSize} = stream_file(Req1, <<>>),
-                        Mime = mimetypes:filename(Filename),
+                        Mime = mimerl:filename(Filename),
                         multipart(Req2, [{file, TmpFile, Mime, ByteSize}|Acc])
                 end;
             {done, Req1} ->

@@ -107,9 +107,9 @@ handle_call({offline, User, Device, Socket}, _, State) ->
 handle_cast({callback, UserId, Body}, State) ->
     logger:debug("Got callback cast"),
     {ok, Callbacks} = chatli_db:get_user_callbacks(UserId),
-    DecodedBody = json:decode(Body, [maps]),
+    {ok, DecodedBody} = thoas:decode(Body),
     MergedBody = maps:merge(#{<<"to">> => UserId}, DecodedBody),
-    Body2 = json:encode(MergedBody, [maps, binary]),
+    Body2 = thoas:encode(MergedBody),
     [send_callback(Url, Body2) || #{url := Url} <- Callbacks],
     {noreply, State};
 handle_cast({publish, Topic, Body}, State) ->
@@ -191,6 +191,6 @@ send_callback(Url, Body) ->
     logger:debug("Send callback.. ~p", [Url]),
     logger:debug("body: ~p", [Body]),
     Opts = #{headers => #{'Content-Type' => <<"application/json">>}, close => true},
-    Response = shttpc:post([Url], Body, Opts),
+    Response = jhn_shttpc:post([Url], Body, Opts),
     logger:debug("response: ~p", [Response]),
     ok.

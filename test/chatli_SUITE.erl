@@ -37,35 +37,35 @@ init_per_suite(_Config) ->
               <<"username">> => Username2,
               <<"password">> => Password2},
     Path = [?BASEPATH, <<"/v1/signup">>],
-    #{status := {201, _}} = shttpc:post(Path, encode(User1), opts()),
+    #{status := {201, _}} = jhn_shttpc:post(Path, encode(User1), opts()),
     Path = [?BASEPATH, <<"/v1/signup">>],
-    #{status := {201, _}} = shttpc:post(Path, encode(User2), opts()),
+    #{status := {201, _}} = jhn_shttpc:post(Path, encode(User2), opts()),
     LoginPath = [?BASEPATH, <<"/v1/login">>],
-    #{status := {200, _}, body := LoginRespBody} = shttpc:post(LoginPath, encode(#{username => Username,
+    #{status := {200, _}, body := LoginRespBody} = jhn_shttpc:post(LoginPath, encode(#{username => Username,
                                                                                    password => Password}), opts()),
     #{<<"access_token">> := Token} = decode(LoginRespBody),
-    [_ , Payload, _] = bstring:tokens(Token, <<".">>),
+    [_ , Payload, _] = jhn_bstring:tokens(Token, <<".">>),
     UserObj1 = decode(base64:decode(Payload)),
-    #{status := {200, _}, body := LoginRespBody2} = shttpc:post(LoginPath, encode(#{username => Username2,
+    #{status := {200, _}, body := LoginRespBody2} = jhn_shttpc:post(LoginPath, encode(#{username => Username2,
                                                                                     password => Password2}), opts()),
     #{<<"access_token">> := Token2} = decode(LoginRespBody2),
-    [_ , Payload2, _] = bstring:tokens(Token2, <<".">>),
+    [_ , Payload2, _] = jhn_bstring:tokens(Token2, <<".">>),
     #{<<"id">> := UserId2} = UserObj2 = decode(base64:decode(Payload2)),
     CallbackPath = [?BASEPATH, <<"/v1/callback">>],
     CallbackObject = #{type => <<"email">>,
                        value => <<"my@email.com">>,
                        url => <<"http://localhost:8095/receiver">>},
-    #{status := {200, _}, body := CallbackRespBody} = shttpc:post(CallbackPath, encode(CallbackObject), opts()),
+    #{status := {200, _}, body := CallbackRespBody} = jhn_shttpc:post(CallbackPath, encode(CallbackObject), opts()),
     Chat = #{<<"name">> => <<"my c hat">>,
              <<"description">> => <<"This is a c hat">>,
              <<"type">> => <<"1to1">>,
              <<"participants">> => [#{<<"id">> => UserId2}]},
     ChatPath = [?BASEPATH, <<"/client/chat">>],
-    #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
+    #{status := {201, _}, body := ChatRespBody} = jhn_shttpc:post(ChatPath, encode(Chat), opts(Token)),
     Device = #{<<"name">> => <<"my device">>},
     DeviceId = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
     DevicePath = [?BASEPATH, <<"/client/device/">>, DeviceId],
-    #{status := {200, _}} = shttpc:put(DevicePath, encode(Device), opts(Token)),
+    #{status := {200, _}} = jhn_shttpc:put(DevicePath, encode(Device), opts(Token)),
     [{user1, #{object => UserObj1,
                token => Token}},
      {user2, #{object => UserObj2,
@@ -87,18 +87,18 @@ end_per_suite(Config) ->
     #{object := #{<<"id">> := Id2},
       token := Token2} = proplists:get_value(user2, Config),
     Path = [?BASEPATH, <<"/client/user/">>, Id],
-    shttpc:delete(Path, opts(Token)),
+    jhn_shttpc:delete(Path, opts(Token)),
     Path2 = [?BASEPATH, <<"/client/user/">>, Id2],
-    shttpc:delete(Path2, opts(Token2)),
+    jhn_shttpc:delete(Path2, opts(Token2)),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     ChatPath = [?BASEPATH, <<"/client/chat/">>, ChatId],
-    #{status := {200, _}} = shttpc:delete(ChatPath, opts(Token)),
+    #{status := {200, _}} = jhn_shttpc:delete(ChatPath, opts(Token)),
     #{<<"id">> := DeviceId} = proplists:get_value(device, Config),
     DevicePath = [?BASEPATH, <<"/client/device/">>, DeviceId],
-    #{status := {200, _}} = shttpc:delete(DevicePath, opts(Token)),
+    #{status := {200, _}} = jhn_shttpc:delete(DevicePath, opts(Token)),
     #{<<"id">> := CallbackId} = proplists:get_value(callback, Config),
     CallbackPath = [?BASEPATH, <<"/v1/callback/">>, CallbackId],
-    #{status := {200, _}} = shttpc:delete(CallbackPath, opts()),
+    #{status := {200, _}} = jhn_shttpc:delete(CallbackPath, opts()),
     ok.
 
 %%--------------------------------------------------------------------
@@ -194,7 +194,7 @@ all() ->
 get_all_users(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
     Path = [?BASEPATH, <<"/client/user">>],
-    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
     4 = length(decode(RespBody)).
 
 add_participant(Config) ->
@@ -202,20 +202,20 @@ add_participant(Config) ->
     #{object := #{id := UserId2}} = proplists:get_value(user2, Config),
     #{id := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
-    #{status := {201, _}} = shttpc:post(Path, encode(#{id => UserId2}), opts(Token)).
+    #{status := {201, _}} = jhn_shttpc:post(Path, encode(#{id => UserId2}), opts(Token)).
 
 list_participant(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
-    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
     #{<<"participants">> := Participants} = decode(RespBody),
     1 = length(Participants).
 
 get_all_chats(Config) ->
     #{token := Token} = proplists:get_value(user1, Config),
     Path = [?BASEPATH, <<"/client/chat/">>],
-    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
     [#{<<"participants">> := Participants}] = decode(RespBody),
     1 = length(Participants).
 
@@ -228,7 +228,7 @@ create_same_chat_again(Config) ->
              <<"type">> => <<"1to1">>,
              <<"participants">> => [#{<<"id">> => UserId2}]},
     ChatPath = [?BASEPATH, <<"/client/chat">>],
-    #{status := {201, _}, body := ChatRespBody} = shttpc:post(ChatPath, encode(Chat), opts(Token)),
+    #{status := {201, _}, body := ChatRespBody} = jhn_shttpc:post(ChatPath, encode(Chat), opts(Token)),
     #{<<"id">> := ChatId} = decode(ChatRespBody).
 
 remove_participant(Config) ->
@@ -236,9 +236,9 @@ remove_participant(Config) ->
     #{object := #{<<"id">> := UserId2}} = proplists:get_value(user2, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant/">>, UserId2],
-    #{status := {200, _}} = shttpc:delete(Path, opts(Token)),
+    #{status := {200, _}} = jhn_shttpc:delete(Path, opts(Token)),
     ListPath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/participant">>],
-    #{status := {200, _}, body := RespBody} = shttpc:get(ListPath, opts(Token)),
+    #{status := {200, _}, body := RespBody} = jhn_shttpc:get(ListPath, opts(Token)),
     #{<<"participants">> := Participants} = decode(RespBody),
     0 = length(Participants).
 
@@ -249,7 +249,7 @@ send_message(Config) ->
     #{<<"id">> := DeviceId} = proplists:get_value(device, Config),
     websocket([<<"/client/device/">>, DeviceId, <<"/user/">>, UserId, <<"/ws">>], Token),
     Path = [?BASEPATH, <<"/client/message">>],
-    #{status := {201, _}, body := MessageBody} = shttpc:post(Path,
+    #{status := {201, _}, body := MessageBody} = jhn_shttpc:post(Path,
                                                              encode(#{chat_id => ChatId,
                                                                       payload => <<"hi hi">>}),
                                                         opts(Token)),
@@ -266,10 +266,10 @@ get_all_message(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message">>],
-    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
     [#{<<"id">> := MessageId}] = [MessageObj] = decode(RespBody),
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
-    #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
+    #{status := {200, _}, body := MessageRespBody} = jhn_shttpc:get(MessagePath, opts(Token)),
     #{<<"id">> := MessageId} = MessageObj = decode(MessageRespBody).
 
 get_filtered_message(Config) ->
@@ -277,13 +277,13 @@ get_filtered_message(Config) ->
     #{<<"id">> := ChatId} = proplists:get_value(chat, Config),
     StartTimestamp = integer_to_binary(proplists:get_value(timestamp, Config)),
     Path = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message?after=">>, StartTimestamp],
-    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
     [#{<<"id">> := MessageId}] = [MessageObj] = decode(RespBody),
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
-    #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
+    #{status := {200, _}, body := MessageRespBody} = jhn_shttpc:get(MessagePath, opts(Token)),
     #{<<"id">> := MessageId} = MessageObj = decode(MessageRespBody),
     Path2 = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message?before=">>, StartTimestamp],
-    #{status := {200, _}, body := RespBody2} = shttpc:get(Path2, opts(Token)),
+    #{status := {200, _}, body := RespBody2} = jhn_shttpc:get(Path2, opts(Token)),
     [] = decode(RespBody2).
 
 get_historic_message(Config) ->
@@ -291,23 +291,23 @@ get_historic_message(Config) ->
     Body = encode(#{type => <<"email">>,
                     value => <<"my@email.com">>,
                     timestamp => proplists:get_value(timestamp, Config)}),
-    #{status := {200, _}} = shttpc:post(Path, Body, opts()).
+    #{status := {200, _}} = jhn_shttpc:post(Path, Body, opts()).
 
 get_all_devices(Config) ->
     #{token := Token} =  proplists:get_value(user1, Config),
     #{<<"id">> := DeviceId} = DeviceObj = proplists:get_value(device, Config),
     Path = [?BASEPATH, <<"/client/device">>],
-    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts(Token)),
+    #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts(Token)),
     [#{<<"id">> := DeviceId2}] = [DeviceObj] = decode(RespBody),
     DeviceId = DeviceId2,
     DevicePath = [?BASEPATH, <<"/client/device/">>, DeviceId],
-    #{status := {200, _}, body := DeviceRespBody} = shttpc:get(DevicePath, opts(Token)),
+    #{status := {200, _}, body := DeviceRespBody} = jhn_shttpc:get(DevicePath, opts(Token)),
     #{<<"id">> := DeviceId} = DeviceObj = decode(DeviceRespBody).
 
 get_callback(Config) ->
     #{<<"id">> := CallbackId} = proplists:get_value(callback, Config),
     Path = [?BASEPATH, <<"/v1/callback/">>, CallbackId],
-    #{status := {200, _}, body := RespBody} = shttpc:get(Path, opts()),
+    #{status := {200, _}, body := RespBody} = jhn_shttpc:get(Path, opts()),
     #{<<"id">> := CallbackId} = decode(RespBody).
 
 upload_attachment(Config) ->
@@ -326,7 +326,7 @@ upload_attachment(Config) ->
     Boundary = chatli_uuid:get_v4(),
     Formatted = format_multipart_formdata(Data, [{<<"chat_id">>, ChatId}], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary),
     ct:pal("multipart: ~p~n", [Formatted]),
-    #{status := {201, _}, body := MessageBody} = shttpc:post(Path, Formatted, opts(attachment, Token, Boundary)),
+    #{status := {201, _}, body := MessageBody} = jhn_shttpc:post(Path, Formatted, opts(attachment, Token, Boundary)),
     #{<<"id">> := MessageId} = decode(MessageBody),
     receive
         {gun_ws, _ConnPid, _StreamRef0, {text, Msg}} ->
@@ -336,12 +336,12 @@ upload_attachment(Config) ->
         exit(timeout)
     end,
     MessagePath = [?BASEPATH, <<"/client/chat/">>, ChatId, <<"/message/">>, MessageId],
-    #{status := {200, _}, body := MessageRespBody} = shttpc:get(MessagePath, opts(Token)),
+    #{status := {200, _}, body := MessageRespBody} = jhn_shttpc:get(MessagePath, opts(Token)),
     #{<<"id">> := MessageId,
       <<"payload">> := #{<<"url">> := Url}} = decode(MessageRespBody),
     ct:log("attachment url: ~p", [Url]),
     AttachmentPath = [?BASEPATH, "/client/", Url],
-    #{status := {200, _}, body := AttachmentBody} = shttpc:get(AttachmentPath, opts(Token)),
+    #{status := {200, _}, body := AttachmentBody} = jhn_shttpc:get(AttachmentPath, opts(Token)),
     AttachmentBody = Data.
 
 opts() ->
