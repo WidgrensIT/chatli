@@ -29,6 +29,7 @@ jobs:
     - name: Run elvis
       run: rebar3 lint
   release:
+    needs: [build]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     name: OTP ${{matrix.otp}} / rebar3 ${{matrix.rebar3}}
