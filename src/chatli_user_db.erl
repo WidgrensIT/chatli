@@ -1,19 +1,24 @@
 -module(chatli_user_db).
 
--export([create/1,
-         get/1,
-         get_login/2,
-         find/2,
-         delete/1,
-         get_all/0,
-         get_all_other/1]).
+-export([
+    create/1,
+    get/1,
+    get_login/2,
+    find/2,
+    delete/1,
+    get_all/0,
+    get_all_other/1
+]).
 
-create(#{id := Id,
-              username := Username,
-              phone_number := PhoneNumber,
-              email := Email,
-              password := Password}) ->
-    SQL = <<"INSERT INTO chatli_user (id, username, phone_number, email, password) VALUES ($1, $2, $3, $4, $5)">>,
+create(#{
+    id := Id,
+    username := Username,
+    phone_number := PhoneNumber,
+    email := Email,
+    password := Password
+}) ->
+    SQL =
+        <<"INSERT INTO chatli_user (id, username, phone_number, email, password) VALUES ($1, $2, $3, $4, $5)">>,
     chatli_db:query1(SQL, [Id, Username, PhoneNumber, Email, Password]).
 
 get(UserId) ->
@@ -26,12 +31,13 @@ get_login(Username, Password) ->
 
 find(Type, Value) ->
     SQL = <<"SELECT * FROM chatli_user WHERE ">>,
-    WhereSQL = case Type of
-                   <<"email">> ->
-                        <<"email = $1">>;
-                   <<"phone_number">> ->
-                        <<"phone_number = $1">>
-               end,
+    WhereSQL =
+        case Type of
+            <<"email">> ->
+                <<"email = $1">>;
+            <<"phone_number">> ->
+                <<"phone_number = $1">>
+        end,
     chatli_db:query1(<<SQL/binary, WhereSQL/binary>>, [Value]).
 
 delete(UserId) ->

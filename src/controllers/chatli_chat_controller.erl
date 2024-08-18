@@ -1,98 +1,127 @@
 -module(chatli_chat_controller).
 -export([
-         message/1,
-         get_archive/1,
-         manage_message/1,
-         get_chat/1,
-         create_chat/1,
-         manage_chat/1,
-         participants/1,
-         manage_participants/1,
-         get_attachment/1,
-         get_attachment_no_auth/1,
-         get_history/1
-        ]).
+    message/1,
+    get_archive/1,
+    manage_message/1,
+    get_chats/1,
+    get_chat/1,
+    delete_chat/1,
+    create_chat/1,
+    participants/1,
+    manage_participants/1,
+    get_attachment/1,
+    get_attachment_no_auth/1,
+    get_history/1
+]).
 
-message(#{auth_data := #{id := UserId},
-          json := Json}) ->
-    logger:debug("Message~n"),
+message(#{
+    headers := Headers,
+    auth_data := #{id := Sender},
+    multipart_data := FormData
+}) ->
+    logger:debug("Headers: ~p", [Headers]),
     Id = chatli_uuid:get_v4(),
-    #{<<"chat_id">> := ChatId} = Json,
-    {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(UserId),
-    Object = maps:merge(#{<<"id">> => Id,
-                          <<"sender">> => UserId,
-                          <<"sender_info">> => #{<<"phone_number">> => PhoneNumber,
-                                                 <<"email">> => Email},
-                          <<"timestamp">> => os:system_time(millisecond),
-                          <<"type">> => <<"message">>,
-                          <<"action">> => <<"message">>}, Json),
-    case chatli_db:create_message(Object) of
-        ok ->
-            ok = chatli_ws_srv:publish(ChatId, json:encode(Object, [maps, binary])),
-            {json, 201, #{}, #{id => Id}};
-        _ ->
-            {status, 400}
-    end;
-message(#{headers := Headers,
-          auth_data := #{id := Sender},
-          multipart_data := FormData}) ->
-    Id = chatli_uuid:get_v4(),
-    logger:debug("Headers: ~p~n", [Headers]),
     case FormData of
         [] ->
-            logger:debug("Empty form data"),
             {status, 200};
         FormData ->
             ChatId = proplists:get_value(<<"chat_id">>, FormData),
-            File2 = case save_file(FormData, [], ChatId) of
-                         [] ->
-                            [];
-                        [File] -> File
-                    end,
+            File2 =
+                case save_file(FormData, [], ChatId) of
+                    [] ->
+                        [];
+                    [File] ->
+                        File
+                end,
 
             Attachments = build_attachment(File2, ChatId),
             Message = attachments_message(Id, ChatId, Sender, Attachments),
             case chatli_db:create_message(Message) of
                 ok ->
-                    try json:encode(Message, [binary, maps]) of
-                        Json -> ok = chatli_ws_srv:publish(ChatId, Json),
-                                {json, 201, #{}, #{id => Id}}
-                    catch _:_ -> {status, 500}
+                    try thoas:encode(Message) of
+                        Json ->
+                            ok = chatli_ws_srv:publish(ChatId, Json),
+                            {json, 201, #{}, #{id => Id}}
+                    catch
+                        _:_ -> {status, 500}
                     end;
                 _ ->
                     {status, 500}
             end
+    end;
+message(#{
+    auth_data := #{id := UserId},
+    json := Json
+}) ->
+    Id = chatli_uuid:get_v4(),
+    #{<<"chat_id">> := ChatId} = Json,
+    {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(UserId),
+    Object = maps:merge(
+        #{
+            <<"id">> => Id,
+            <<"sender">> => UserId,
+            <<"sender_info">> => #{
+                <<"phone_number">> => PhoneNumber,
+                <<"email">> => Email
+            },
+            <<"timestamp">> => os:system_time(millisecond),
+            <<"type">> => <<"message">>,
+            <<"action">> => <<"message">>
+        },
+        Json
+    ),
+    case chatli_db:create_message(Object) of
+        ok ->
+            ok = chatli_ws_srv:publish(ChatId, thoas:encode(Object)),
+            {json, 201, #{}, #{id => Id}};
+        _ ->
+            {status, 400}
     end.
-
-get_attachment(#{bindings := #{<<"attachmentid">> := AttachmentId,
-                               <<"chatid">> := ChatId}}) ->
+get_attachment(#{
+    bindings := #{
+        <<"attachmentid">> := AttachmentId,
+        <<"chatid">> := ChatId
+    }
+}) ->
     case chatli_db:get_attachment(AttachmentId, ChatId) of
         undefined ->
             {status, 404};
-        {ok, #{id := Id,
-               chat_id := ChatId,
-               mime := Mime,
-               length := Length}} ->
+        {ok, #{
+            id := Id,
+            chat_id := ChatId,
+            mime := Mime,
+            length := Length
+        }} ->
             {ok, Path} = application:get_env(chatli, download_path),
             {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
     end.
 
-get_attachment_no_auth(#{bindings := #{<<"attachmentid">> := AttachmentId,
-                                       <<"chatid">> := ChatId}}) ->
+get_attachment_no_auth(#{
+    bindings := #{
+        <<"attachmentid">> := AttachmentId,
+        <<"chatid">> := ChatId
+    }
+}) ->
     case chatli_db:get_attachment(AttachmentId, ChatId) of
         undefined ->
             {status, 404};
-        {ok, #{id := Id,
-               chat_id := ChatId,
-               mime := Mime,
-               length := Length}} ->
+        {ok, #{
+            id := Id,
+            chat_id := ChatId,
+            mime := Mime,
+            length := Length
+        }} ->
             {ok, Path} = application:get_env(chatli, download_path),
             {sendfile, 200, #{}, {0, Length, Path ++ binary_to_list(Id)}, Mime}
     end.
 
-get_history(#{json := #{<<"type">> := Type,
-                        <<"value">> := Value,
-                        <<"timestamp">> := Timestamp}}) ->
+get_history(#{
+    json := #{
+        <<"type">> := Type,
+        <<"value">> := Value,
+        <<"timestamp">> := Timestamp
+    }
+}) ->
     case chatli_user_db:find(Type, Value) of
         undefined ->
             {status, 200};
@@ -103,7 +132,7 @@ get_history(#{json := #{<<"type">> := Type,
             {status, 200}
     end.
 
-get_chat_messages([], _ , Acc) ->
+get_chat_messages([], _, Acc) ->
     Acc;
 get_chat_messages([#{id := ChatId} | T], Timestamp, Acc) ->
     case chatli_db:get_filtered_messages(ChatId, [{<<"after">>, integer_to_binary(Timestamp)}]) of
@@ -125,28 +154,35 @@ send_callback([Message | T], UserId) ->
     end.
 
 encode(Message) ->
-    try json:encode(Message, [binary, maps]) of
+    try thoas:encode(Message) of
         Json -> Json
-    catch _:_ -> error
+    catch
+        _:_ -> error
     end.
 
-
-get_archive(#{bindings := #{<<"chatid">> := ChatId},
-              parsed_qs := []}) ->
+get_archive(#{
+    bindings := #{<<"chatid">> := ChatId},
+    parsed_qs := []
+}) ->
     {ok, Result} = chatli_db:get_chat_messages(ChatId),
     {json, 200, #{}, Result};
-get_archive(#{bindings := #{<<"chatid">> := ChatId},
-              parsed_qs := QS}) ->
+get_archive(#{
+    bindings := #{<<"chatid">> := ChatId},
+    parsed_qs := QS
+}) ->
     {ok, Result} = chatli_db:get_filtered_messages(ChatId, QS),
     {json, 200, #{}, Result}.
 
-
-manage_message(#{bindings := #{<<"chatid">> := ChatId,
-                               <<"messageid">> := MessageId}}) ->
+manage_message(#{
+    bindings := #{
+        <<"chatid">> := ChatId,
+        <<"messageid">> := MessageId
+    }
+}) ->
     {ok, Message} = chatli_db:get_message(ChatId, MessageId),
     {json, 200, #{}, Message}.
 
-get_chat(#{auth_data := #{id := UserId}}) ->
+get_chats(#{auth_data := #{id := UserId}}) ->
     case chatli_db:get_all_chats(UserId) of
         {ok, Chats} ->
             Chats2 = get_participants(Chats, UserId, []),
@@ -155,10 +191,15 @@ get_chat(#{auth_data := #{id := UserId}}) ->
             logger:warning("chat error: ~p", [Error]),
             {json, 200, #{}, []}
     end.
-create_chat(#{json := #{<<"participants">> := Participants,
-                 <<"type">> := Type} = Json,
-       auth_data := #{id := UserId}}) ->
-    Id = list_to_binary(uuid:uuid_to_string(uuid:get_v4())),
+
+create_chat(#{
+    json := #{
+        <<"participants">> := Participants,
+        <<"type">> := Type
+    } = Json,
+    auth_data := #{id := UserId}
+}) ->
+    Id = chatli_uuid:get_v4(),
     Object = maps:merge(#{<<"id">> => Id}, Json),
     case Type of
         <<"1to1">> ->
@@ -174,37 +215,44 @@ create_chat(#{json := #{<<"participants">> := Participants,
             create_chat(Object, UserId, Participants, Id)
     end.
 
-manage_chat(#{method := <<"GET">>,
-              bindings := #{<<"chatid">> := ChatId},
-              auth_data := #{id := UserId}}) ->
+get_chat(#{
+    bindings := #{<<"chatid">> := ChatId},
+    auth_data := #{id := UserId}
+}) ->
     case chatli_db:get_chat(ChatId) of
         {ok, Chat} ->
-            [Chat2|_] = get_participants([Chat], UserId, []),
+            [Chat2 | _] = get_participants([Chat], UserId, []),
             {json, 201, #{}, Chat2};
         Error ->
             logger:warning("chat error: ~p", [Error]),
             {status, 500}
-    end;
-manage_chat(#{method := <<"DELETE">>,
-              bindings := #{<<"chatid">> := ChatId}}) ->
+    end.
+
+delete_chat(#{bindings := #{<<"chatid">> := ChatId}}) ->
     chatli_db:delete_chat(ChatId),
     {status, 200}.
 
-participants(#{method := <<"GET">>,
-               bindings := #{<<"chatid">> := ChatId},
-               auth_data := #{id := UserId}}) ->
+participants(#{
+    method := <<"GET">>,
+    bindings := #{<<"chatid">> := ChatId},
+    auth_data := #{id := UserId}
+}) ->
     case chatli_db:get_all_other_participants(ChatId, UserId) of
         {ok, Participants} ->
-            {json, 200, #{}, #{id => ChatId,
-                               participants => Participants}};
+            {json, 200, #{}, #{
+                id => ChatId,
+                participants => Participants
+            }};
         Error ->
             logger:warning("participants error: ~p", [Error]),
             {status, 500}
     end;
-participants(#{method := <<"POST">>,
-               bindings := #{<<"chatid">> := ChatId},
-               json := Json,
-               auth_data := #{id := Sender}}) ->
+participants(#{
+    method := <<"POST">>,
+    bindings := #{<<"chatid">> := ChatId},
+    json := Json,
+    auth_data := #{id := Sender}
+}) ->
     #{<<"id">> := UserId} = Json,
     case chatli_db:add_participant(ChatId, UserId) of
         ok ->
@@ -218,18 +266,24 @@ participants(#{method := <<"POST">>,
             {status, 500}
     end.
 
-manage_participants(#{method := <<"DELETE">>,
-                      bindings := #{<<"chatid">> := ChatId,
-                                    <<"participantid">> := ParticipantId},
-                      auth_data := #{id := Sender}}) ->
+manage_participants(#{
+    method := <<"DELETE">>,
+    bindings := #{
+        <<"chatid">> := ChatId,
+        <<"participantid">> := ParticipantId
+    },
+    auth_data := #{id := Sender}
+}) ->
     chatli_db:remove_participant(ChatId, ParticipantId),
     {ok, User} = chatli_user_db:get(ParticipantId),
     Id = chatli_uuid:get_v4(),
     Message = event_message(Id, ChatId, Sender, User, <<"leave">>),
-    try json:encode(Message, [binary, maps]) of
-        Json -> ok = chatli_ws_srv:publish(ChatId, Json),
-                {status, 200}
-    catch _:_ -> {status, 500}
+    try thoas:encode(Message) of
+        Json ->
+            ok = chatli_ws_srv:publish(ChatId, Json),
+            {status, 200}
+    catch
+        _:_ -> {status, 500}
     end.
 
 get_participants([], _, Acc) ->
@@ -238,11 +292,13 @@ get_participants([#{id := ChatId} = Chat | Chats], UserId, Acc) ->
     {ok, Participants} = chatli_db:get_all_other_participants(ChatId, UserId),
     get_participants(Chats, UserId, [maps:merge(#{participants => Participants}, Chat) | Acc]).
 
-
 create_chat(Object, UserId, Participants, Id) ->
     case chatli_db:create_chat(Object) of
-         ok ->
-            [chatli_db:add_participant(Id, UserId2) || #{<<"id">> := UserId2} <- [#{<<"id">> => UserId} | Participants]],
+        ok ->
+            [
+                chatli_db:add_participant(Id, UserId2)
+             || #{<<"id">> := UserId2} <- [#{<<"id">> => UserId} | Participants]
+            ],
             {json, 201, #{}, Object};
         Error ->
             logger:warning("chat error: ~p", [Error]),
@@ -251,53 +307,57 @@ create_chat(Object, UserId, Participants, Id) ->
 
 build_attachment([], _) ->
     #{};
-build_attachment({ok, AttachmentId, Mime, WhatIs}, ChatId) ->
-    logger:warning("what is? ~p", [WhatIs]),
-    #{<<"url">> => <<"chat/", ChatId/binary, "/attachment/", AttachmentId/binary>>,
-      <<"mime">> => Mime}.
+build_attachment({ok, AttachmentId, Mime, _WhatIs}, ChatId) ->
+    #{
+        <<"url">> => <<"chat/", ChatId/binary, "/attachment/", AttachmentId/binary>>,
+        <<"mime">> => Mime
+    }.
 
 -spec event_message(binary(), binary(), binary(), map(), binary()) -> map().
 event_message(Id, ChatId, Sender, User, Action) ->
-    #{<<"id">> => Id,
-      <<"chat_id">> => ChatId,
-      <<"sender">> => Sender,
-      <<"payload">> => #{<<"user">> => User},
-      <<"type">> => <<"event">>,
-      <<"action">> => Action,
-      <<"timestamp">> => os:system_time(millisecond)}.
+    #{
+        <<"id">> => Id,
+        <<"chat_id">> => ChatId,
+        <<"sender">> => Sender,
+        <<"payload">> => #{<<"user">> => User},
+        <<"type">> => <<"event">>,
+        <<"action">> => Action,
+        <<"timestamp">> => os:system_time(millisecond)
+    }.
 
 -spec attachments_message(binary(), binary(), binary(), map()) -> map().
 attachments_message(Id, ChatId, Sender, Attachments) ->
     {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(Sender),
-    #{<<"id">> => Id,
-      <<"chat_id">> => ChatId,
-      <<"sender">> => Sender,
-      <<"sender_info">> => #{<<"phone_number">> => PhoneNumber,
-                             <<"email">> => Email},
-      <<"payload">> => Attachments,
-      <<"type">> => <<"message">>,
-      <<"action">> => <<"attachments">>,
-      <<"timestamp">> => os:system_time(millisecond)}.
+    #{
+        <<"id">> => Id,
+        <<"chat_id">> => ChatId,
+        <<"sender">> => Sender,
+        <<"sender_info">> => #{
+            <<"phone_number">> => PhoneNumber,
+            <<"email">> => Email
+        },
+        <<"payload">> => Attachments,
+        <<"type">> => <<"message">>,
+        <<"action">> => <<"attachments">>,
+        <<"timestamp">> => os:system_time(millisecond)
+    }.
 
 save_file([], Acc, _) ->
     Acc;
-save_file([{file, Bytes, Mime, ByteSize}|T], Acc, ChatId) ->
-    UUID = chatli_uuid:get_v4_no_dash(list),
+save_file([{file, Bytes, Mime, ByteSize} | T], Acc, ChatId) ->
+    UUID = binary_to_list(chatli_uuid:get_v4()),
     {ok, Path} = application:get_env(chatli, download_path),
-    logger:debug("path: ~p", [Path]),
     {ok, Dir} = file:get_cwd(),
-    logger:debug("dir: ~p", [Dir]),
     case file:write_file(Path ++ UUID, Bytes) of
         ok ->
             case chatli_db:create_attachment(UUID, ChatId, Mime, ByteSize) of
-                 ok ->
-                    save_file(T, [{ok, list_to_binary(UUID), Mime, ByteSize}|Acc], ChatId);
-                 _ ->
-                    save_file([{error, create_attachment}|T], Acc, ChatId)
+                ok ->
+                    save_file(T, [{ok, list_to_binary(UUID), Mime, ByteSize} | Acc], ChatId);
+                _ ->
+                    save_file([{error, create_attachment} | T], Acc, ChatId)
             end;
         Error ->
-            save_file(T, [Error|Acc], ChatId)
+            save_file(T, [Error | Acc], ChatId)
     end;
-save_file([_|T], Acc, ChatId) ->
+save_file([_ | T], Acc, ChatId) ->
     save_file(T, Acc, ChatId).
-

@@ -13,7 +13,7 @@
     pgo,
     jwerl,
     runtime_tools,
-    mimetypes
+    mimerl
    ]},
   {env,[]},
   {modules, []},

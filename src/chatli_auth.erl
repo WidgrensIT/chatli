@@ -17,5 +17,6 @@ auth_jwt(Req) ->
                 _:_ ->
                     false
             end;
-        _ -> false
+        _ ->
+            false
     end.
