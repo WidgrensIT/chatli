@@ -376,7 +376,6 @@ upload_attachment(Config) ->
     Formatted = format_multipart_formdata(
         Data, [{<<"chat_id">>, ChatId}], <<"itworks">>, [Filename], <<"image/jpeg">>, Boundary
     ),
-    ct:pal("multipart: ~p~n", [Formatted]),
     #{status := {201, _}, body := MessageBody} = jhn_shttpc:post(
         Path, Formatted, opts(attachment, Token, Boundary)
     ),

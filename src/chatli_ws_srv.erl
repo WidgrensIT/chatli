@@ -110,7 +110,6 @@ handle_call({offline, User, Device, Socket}, _, State) ->
     | {noreply, NewState :: term(), hibernate}
     | {stop, Reason :: term(), NewState :: term()}.
 handle_cast({callback, UserId, Body}, State) ->
-    logger:debug("Got callback cast"),
     {ok, Callbacks} = chatli_db:get_user_callbacks(UserId),
     {ok, DecodedBody} = thoas:decode(Body),
     MergedBody = maps:merge(#{<<"to">> => UserId}, DecodedBody),
@@ -196,9 +195,6 @@ online_sockets(User) ->
     ets:match(online, {User, '_', '$1'}).
 
 send_callback(Url, Body) ->
-    logger:debug("Send callback.. ~p", [Url]),
-    logger:debug("body: ~p", [Body]),
     Opts = #{headers => #{'Content-Type' => <<"application/json">>}, close => true},
-    Response = jhn_shttpc:post([Url], Body, Opts),
-    logger:debug("response: ~p", [Response]),
+    jhn_shttpc:post([Url], Body, Opts),
     ok.

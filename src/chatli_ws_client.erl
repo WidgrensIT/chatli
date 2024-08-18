@@ -23,7 +23,6 @@ init(#{
     }}.
 
 websocket_init(State) ->
-    logger:info("Client online ~p", [State]),
     #{
         user := User,
         device := Device
@@ -36,17 +35,14 @@ websocket_init(State) ->
 websocket_handle(pong, State) ->
     {ok, State};
 websocket_handle(Unexpected, State) ->
-    logger:warning("UNEXPECTED: ~p State: ~p", [Unexpected, State]),
     {ok, State}.
 
 websocket_info(ping, State) ->
     {reply, ping, State};
 websocket_info(Payload, State) ->
-    logger:info("Sending payload: ~p State: ~p", [Payload, State]),
     {reply, {text, Payload}, State}.
 
 terminate(_, _, State) ->
-    logger:info("Client offline ~p", [State]),
     #{
         user := User,
         device := Device

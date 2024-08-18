@@ -19,11 +19,10 @@ message(#{
     auth_data := #{id := Sender},
     multipart_data := FormData
 }) ->
+    logger:debug("Headers: ~p", [Headers]),
     Id = chatli_uuid:get_v4(),
-    logger:debug("Headers: ~p~n", [Headers]),
     case FormData of
         [] ->
-            logger:debug("Empty form data"),
             {status, 200};
         FormData ->
             ChatId = proplists:get_value(<<"chat_id">>, FormData),
@@ -54,7 +53,6 @@ message(#{
     auth_data := #{id := UserId},
     json := Json
 }) ->
-    logger:debug("Message~n"),
     Id = chatli_uuid:get_v4(),
     #{<<"chat_id">> := ChatId} = Json,
     {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(UserId),
@@ -182,7 +180,6 @@ manage_message(#{
     }
 }) ->
     {ok, Message} = chatli_db:get_message(ChatId, MessageId),
-    logger:debug("manage message: ~p~n", [Message]),
     {json, 200, #{}, Message}.
 
 get_chats(#{auth_data := #{id := UserId}}) ->
@@ -310,8 +307,7 @@ create_chat(Object, UserId, Participants, Id) ->
 
 build_attachment([], _) ->
     #{};
-build_attachment({ok, AttachmentId, Mime, WhatIs}, ChatId) ->
-    logger:warning("what is? ~p", [WhatIs]),
+build_attachment({ok, AttachmentId, Mime, _WhatIs}, ChatId) ->
     #{
         <<"url">> => <<"chat/", ChatId/binary, "/attachment/", AttachmentId/binary>>,
         <<"mime">> => Mime
@@ -349,11 +345,9 @@ attachments_message(Id, ChatId, Sender, Attachments) ->
 save_file([], Acc, _) ->
     Acc;
 save_file([{file, Bytes, Mime, ByteSize} | T], Acc, ChatId) ->
-    UUID = chatli_uuid:get_v4_no_dash(list),
+    UUID = binary_to_list(chatli_uuid:get_v4()),
     {ok, Path} = application:get_env(chatli, download_path),
-    logger:debug("path: ~p", [Path]),
     {ok, Dir} = file:get_cwd(),
-    logger:debug("dir: ~p", [Dir]),
     case file:write_file(Path ++ UUID, Bytes) of
         ok ->
             case chatli_db:create_attachment(UUID, ChatId, Mime, ByteSize) of

@@ -54,13 +54,9 @@ multipart(Req0, Acc) ->
         {ok, Headers, Req1} ->
             case cow_multipart:form_data(Headers) of
                 {data, FieldName} ->
-                    logger:debug("FieldName: ~p", [FieldName]),
                     {ok, Body, Req2} = cowboy_req:read_part_body(Req1),
                     multipart(Req2, [{FieldName, Body} | Acc]);
-                {file, FieldName, Filename, CType} ->
-                    logger:debug("FieldName: ~p FileName: ~p CType: ~p", [
-                        FieldName, Filename, CType
-                    ]),
+                {file, _FieldName, Filename, _CType} ->
                     {Req2, TmpFile, ByteSize} = stream_file(Req1, <<>>),
                     Mime = mimerl:filename(Filename),
                     multipart(Req2, [{file, TmpFile, Mime, ByteSize} | Acc])

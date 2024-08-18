@@ -23,7 +23,6 @@ signup(#{
     json := JSON
 }) ->
     Id = chatli_uuid:get_v4(),
-    logger:debug("json: ~p", [JSON]),
     Phonenumber = maps:get(<<"phoneNumber">>, JSON, <<>>),
     Email = maps:get(<<"email">>, JSON, <<>>),
     Password = maps:get(<<"password">>, JSON, undefined),

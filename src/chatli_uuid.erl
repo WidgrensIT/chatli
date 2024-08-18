@@ -9,4 +9,4 @@ get_v4() ->
     jhn_uuid:gen(v4, [binary]).
 
 get_v4_no_dash(list) ->
-    jhn_uuid:gen(v4, [binary, hex]).
+    binary_to_list(jhn_uuid:gen(v4, [binary, hex])).
