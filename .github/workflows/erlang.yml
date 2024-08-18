@@ -27,7 +27,7 @@ jobs:
     - name: Run xref
       run: rebar3 xref
     - name: Run elvis
-      run: rebar3 as lint lint
+      run: rebar3 lint
   release:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
