@@ -74,7 +74,7 @@ get_chat_messages(ChatId) ->
     query(SQL, [ChatId]).
 
 get_filtered_messages(ChatId, QS) ->
-    Where = <<" WHERE chat_id=$1">>,
+    Where = <<" WHERE chat_id=$1 ">>,
     {Values, SqlWHERE} =
         case QS of
             #{
