@@ -68,7 +68,7 @@ get_chat_messages(ChatId) ->
             "                    sender,\n"
             "                    timestamp\n"
             "            FROM message\n"
-            "            WHERE chat_id = $1\n"
+            "            WHERE chat_id = $1 \n"
             "            ORDER BY timestamp ASC"
         >>,
     query(SQL, [ChatId]).
