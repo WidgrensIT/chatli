@@ -15,11 +15,10 @@
 ]).
 
 message(#{
-    headers := Headers,
+    headers := #{<<"user-agent">> := UserAgent},
     auth_data := #{id := Sender},
     multipart_data := FormData
 }) ->
-    logger:debug("Headers: ~p", [Headers]),
     Id = chatli_uuid:get_v4(),
     case FormData of
         [] ->
@@ -35,7 +34,7 @@ message(#{
                 end,
 
             Attachments = build_attachment(File2, ChatId),
-            Message = attachments_message(Id, ChatId, Sender, Attachments),
+            Message = attachments_message(Id, ChatId, Sender, Attachments, UserAgent),
             case chatli_db:create_message(Message) of
                 ok ->
                     try thoas:encode(Message) of
@@ -50,6 +49,7 @@ message(#{
             end
     end;
 message(#{
+    headers := #{<<"user-agent">> := UserAgent},
     auth_data := #{id := UserId},
     json := Json
 }) ->
@@ -62,7 +62,8 @@ message(#{
             <<"sender">> => UserId,
             <<"sender_info">> => #{
                 <<"phone_number">> => PhoneNumber,
-                <<"email">> => Email
+                <<"email">> => Email,
+                <<"user-agent">> => UserAgent
             },
             <<"timestamp">> => os:system_time(millisecond),
             <<"type">> => <<"message">>,
@@ -325,8 +326,8 @@ event_message(Id, ChatId, Sender, User, Action) ->
         <<"timestamp">> => os:system_time(millisecond)
     }.
 
--spec attachments_message(binary(), binary(), binary(), map()) -> map().
-attachments_message(Id, ChatId, Sender, Attachments) ->
+-spec attachments_message(binary(), binary(), binary(), map(), binary()) -> map().
+attachments_message(Id, ChatId, Sender, Attachments, UserAgent) ->
     {ok, #{phone_number := PhoneNumber, email := Email}} = chatli_user_db:get(Sender),
     #{
         <<"id">> => Id,
@@ -334,7 +335,8 @@ attachments_message(Id, ChatId, Sender, Attachments) ->
         <<"sender">> => Sender,
         <<"sender_info">> => #{
             <<"phone_number">> => PhoneNumber,
-            <<"email">> => Email
+            <<"email">> => Email,
+            <<"user-agent">> => UserAgent
         },
         <<"payload">> => Attachments,
         <<"type">> => <<"message">>,
