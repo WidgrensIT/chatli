@@ -414,7 +414,8 @@ opts(Token) ->
         headers => #{
             'Content-Type' => <<"application/json">>,
             'Accept' => <<"application/json">>,
-            'Authorization' => <<"Bearer ", Token/binary>>
+            'Authorization' => <<"Bearer ", Token/binary>>,
+            'User-Agent' => <<"Test client">>
         },
         close => true
     },
@@ -426,7 +427,8 @@ opts(attachment, Token, Boundary) ->
     Res = #{
         headers => #{
             'Content-Type' => <<"multipart/form-data; boundary=", Boundary/binary>>,
-            'Authorization' => <<"Bearer ", Token/binary>>
+            'Authorization' => <<"Bearer ", Token/binary>>,
+            'User-Agent' => <<"Test client">>
         },
         close => true
     },
