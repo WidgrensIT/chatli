@@ -63,7 +63,7 @@ message(#{
             <<"sender_info">> => #{
                 <<"phone_number">> => PhoneNumber,
                 <<"email">> => Email,
-                <<"user-agent">> => UserAgent
+                <<"user_agent">> => UserAgent
             },
             <<"timestamp">> => os:system_time(millisecond),
             <<"type">> => <<"message">>,
@@ -336,7 +336,7 @@ attachments_message(Id, ChatId, Sender, Attachments, UserAgent) ->
         <<"sender_info">> => #{
             <<"phone_number">> => PhoneNumber,
             <<"email">> => Email,
-            <<"user-agent">> => UserAgent
+            <<"user_agent">> => UserAgent
         },
         <<"payload">> => Attachments,
         <<"type">> => <<"message">>,
