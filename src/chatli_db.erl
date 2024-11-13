@@ -29,6 +29,7 @@ create_message(#{
     <<"chat_id">> := ChatId,
     <<"payload">> := Payload,
     <<"sender">> := UserId,
+    <<"sender_info">> := SenderInfoJson,
     <<"timestamp">> := Timestamp,
     <<"type">> := Type,
     <<"action">> := Action
@@ -41,10 +42,11 @@ create_message(#{
             "                                  sender,\n"
             "                                  timestamp,\n"
             "                                  type,\n"
-            "                                  action)\n"
-            "             VALUES ($1, $2, $3, $4, $5, $6, $7)"
+            "                                  action,\n"
+            "                                  sender_info)\n"
+            "             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
         >>,
-    query1(SQL, [Id, ChatId, Payload, UserId, Timestamp, Type, Action]).
+    query1(SQL, [Id, ChatId, Payload, UserId, Timestamp, Type, Action, SenderInfoJson]).
 
 get_message(ChatId, MessageId) ->
     SQL =
