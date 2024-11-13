@@ -100,6 +100,7 @@ get_filtered_messages(ChatId, QS) ->
             "                    chat_id,\n"
             "                    payload,\n"
             "                    sender,\n"
+            "                    sender_info,\n"
             "                    timestamp\n"
             "            FROM message",
             SqlWHERE/binary,
